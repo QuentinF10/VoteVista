@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="ch.qos.logback.classic-0.9.28">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/ch.qos.logback.classic-0.9.28.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

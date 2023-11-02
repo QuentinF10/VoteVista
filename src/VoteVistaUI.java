@@ -1,3 +1,7 @@
+import com.github.sarxos.webcam.Webcam;
+import com.github.sarxos.webcam.WebcamPanel;
+import com.github.sarxos.webcam.WebcamResolution;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
@@ -10,8 +14,19 @@ public class VoteVistaUI {
     private JFrame frame;
     private TablePanel tablePanel;
     private Image printerImage, cameraImage, backgroundImage, oregonImage;
+    private Webcam webcam;
+    private WebcamPanel webcamPanel;
 
     public VoteVistaUI() {
+
+        // Initialize the webcam
+        webcam = Webcam.getDefault();
+        webcam.setViewSize(WebcamResolution.VGA.getSize());
+        webcamPanel = new WebcamPanel(webcam, false);
+        webcamPanel.setMirrored(true);
+        webcamPanel.setFPSDisplayed(true);
+        webcamPanel.setFillArea(true);
+
         // Create the main window
         frame = new JFrame("VoteVista");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -68,6 +83,8 @@ public class VoteVistaUI {
     class TablePanel extends JPanel {
         private JPanel screen;
         private JLabel screenMessage;
+        // New field to track camera status
+        private boolean isCameraOn = false;
 
         public TablePanel() {
             // Initialize the screen as a JPanel
@@ -89,22 +106,45 @@ public class VoteVistaUI {
             // Set the background of the screen to white to represent the inactive screen
             screen.setBackground(Color.WHITE);
 
-            // Add a MouseListener to the screen
+            // When the screen is touched
             screen.addMouseListener(new MouseAdapter() {
                 @Override
                 public void mouseClicked(MouseEvent e) {
-                    // This is where you can add the code to transition to the voting state
-                    screenMessage.setText("Voting screen goes here...");
+                    // Adjust the size of the webcam panel
+                    Dimension size = new Dimension(320, 240);
+                    webcam.setViewSize(size); // Set the new size for the webcam view
+
+                    // Create a new panel for the webcam if not already done
+                    WebcamPanel webcamPanel = new WebcamPanel(webcam);
+                    webcamPanel.setPreferredSize(size);
+
+                    // Remove existing components from screen if necessary
+                    screen.removeAll();
+
+                    // Add the webcam panel to the screen
+                    screen.add(webcamPanel, BorderLayout.CENTER);
+
+
+                    // Refresh the screen panel to show the webcam panel
+                    screen.revalidate();
+                    screen.repaint();
+
+                    // Set the camera status to on
+                    isCameraOn = true;
+                    TablePanel.this.repaint(); // This refers to the outer class instance of TablePanel
                 }
             });
+
 
             // Add the screen to the TablePanel
             this.setLayout(null); // Use absolute positioning
             this.add(screen);
         }
+
         @Override
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
+
 
             // Draw the background image first
             if (backgroundImage != null) {
@@ -178,11 +218,18 @@ public class VoteVistaUI {
                 int cameraX = getWidth() / 2 - cameraImage.getWidth(null) / 2 + 13; // Centered above the screen
                 int cameraY = screenY - cameraImage.getHeight(null) - 2; // Positioned above the screen
                 g.drawImage(cameraImage, cameraX, cameraY, this);
+
+                // Draw red light if the camera is on
+                if (isCameraOn) {
+                    g.setColor(Color.RED);
+                    int lightDiameter = 12;
+                    int lightX = cameraX + cameraImage.getWidth(null) - 31; // Position the light to the right edge of the camera icon
+                    int lightY = cameraY + 6; // Position the light at the top edge of the camera icon
+                    g.fillOval(lightX, lightY, lightDiameter, lightDiameter);
+                }
             }
         }
     }
 
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new VoteVistaUI());
-    }
+
 }

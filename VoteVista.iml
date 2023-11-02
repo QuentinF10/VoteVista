@@ -1,5 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <module type="JAVA_MODULE" version="4">
+  <component name="FacetManager">
+    <facet type="web" name="Web">
+      <configuration>
+        <descriptors>
+          <deploymentDescriptor name="web.xml" url="file://$MODULE_DIR$/zxing-master/zxing.appspot.com/src/main/webapp/WEB-INF/web.xml" />
+        </descriptors>
+        <webroots>
+          <root url="file://$MODULE_DIR$/zxing-master/zxing.appspot.com/src/main/webapp" relative="/" />
+        </webroots>
+      </configuration>
+    </facet>
+  </component>
   <component name="NewModuleRootManager" inherit-compiler-output="true">
     <exclude-output />
     <content url="file://$MODULE_DIR$">
@@ -7,5 +19,12 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="library" name="webcam-capture-0.3.12" level="project" />
+    <orderEntry type="library" name="bridj-0.6.2" level="project" />
+    <orderEntry type="library" name="zxing-javase" level="project" />
+    <orderEntry type="library" name="ch.qos.logback.classic-0.9.28" level="project" />
+    <orderEntry type="library" name="ch.qos.logback.core-0.9.28" level="project" />
+    <orderEntry type="library" name="core-3.5.1" level="project" />
+    <orderEntry type="library" name="slf4j-api-1.7.0" level="project" />
   </component>
 </module>

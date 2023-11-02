@@ -1,0 +1,215 @@
+#!/bin/bash
+set -eu
+# set -x
+
+cd `dirname $0`
+BASE_DIR=$PWD
+export DYNCALL_HOME=$BASE_DIR/dyncall
+
+DYNCALL_DIFF=$BASE_DIR/src/main/cpp/bridj/dyncall.diff
+
+if [[ ! -d "$DYNCALL_HOME" ]]
+then
+	$BASE_DIR/admin/checkout_and_patch_dyncall.sh $DYNCALL_DIFF || failed "Failed to checkout and patch dyncall"
+fi
+
+cd $DYNCALL_HOME
+if which hg 2>/dev/null ; then
+	hg diff > $DYNCALL_DIFF
+fi
+cd $BASE_DIR
+
+
+UNAME_ARCH=`uname -m`
+UNAME_OS=`uname -s | sed s/_NT-.*/_NT/`
+
+function get_arch() {
+    if [[ "$UNAME_OS" == "SunOS" ]]; then
+        if [ "`isainfo -n`" = "amd64" ]; then
+		    echo "x64"
+	    else
+		    echo "x86"
+	    fi
+    # elif [[ "$UNAME_OS" == "Darwin" ]]; then
+	  #   echo "universal"
+    else
+        case $UNAME_ARCH in
+        i86pc|i386|i486|i586|i686|x86)
+	        echo x86
+	        ;;
+        x86_64|amd64)
+	        echo x64
+	        ;;
+				aarch64)
+					echo arm64
+					;;
+        arm*)
+			    if [[ -d /lib/arm-linux-gnueabihf ]] ; then
+	        	echo "armhf"
+						# echo "arm32v7"
+						# echo "arm"
+	        elif [[ -d /lib/arm-linux-gnueabi ]] ; then
+	        	echo "armel"
+						# echo "arm32v5"
+    	    else
+    		    failed "Unknown Linux arm flavour: please edit $0 and Platform.java"
+	        fi
+	        ;;
+        esac
+    fi
+}
+
+function get_os() {
+    case $UNAME_OS in
+    WindowsNT)
+	    echo "windows"
+	    ;;
+    Darwin)
+	    echo "darwin"
+	    ;;
+    Linux)
+	    echo "linux"
+	    ;;
+    SunOS)
+	    echo "sunos"
+	    ;;
+    OpenBSD)
+	    echo "openbsd"
+	    ;;
+    FreeBSD|GNU/kFreeBSD)
+	    echo "freebsd"
+	    ;;
+    NetBSD)
+	    echo "netbsd"
+	    ;;
+    esac
+}
+
+function build_libraries() {
+	local OS="$1"
+	local ARCH="$2"
+	shift 2
+
+	local CMAKE_FLAGS=( "$@" )
+	local RESOURCES=()
+	local TEST_RESOURCES=()
+
+	# if [[ "${FAST:-0}" != "1" ]]; then
+	# 	mvn generate-sources
+	# fi
+
+	if [[ "$OS" == "android" ]]; then
+		$BASE_DIR/src/main/cpp/bridj/MakeAndroid.sh $@
+		return 0
+	fi
+
+	if [[ "${DEBUG:-0}" == "1" ]]; then
+		CMAKE_FLAGS+=( -DCMAKE_BUILD_TYPE=Debug )
+	else
+		CMAKE_FLAGS+=( -DCMAKE_BUILD_TYPE=RelWithDebInfo )
+		# CMAKE_FLAGS+=( -DCMAKE_BUILD_TYPE=Release )
+	fi
+
+	case "$OS" in
+		windows)
+			# CMAKE_FLAGS+=( -G "Visual Studio 17 2022" )
+			# case "$ARCH" in
+			# 	x86)
+			# 		CMAKE_FLAGS+=( -A Win32 )
+			# 		;;
+			# 	x64)
+			# 		CMAKE_FLAGS+=( -A x64 )
+			# 		;;
+			# 	arm)
+			# 		CMAKE_FLAGS+=( -A ARM )
+			# 		;;
+			# 	arm64)
+			# 		CMAKE_FLAGS+=( -A ARM64 )
+			# 		;;
+			# 	*)
+			# 		echo "Unknown arch: $ARCH" >&2
+			# 		exit 1
+			# esac
+			RESOURCES+=( bridj.dll )
+			TEST_RESOURCES+=( test.dll dependsOnTest.dll )
+			;;
+		darwin)
+			case "$ARCH" in
+				x64)
+					CMAKE_FLAGS+=( -DCMAKE_OSX_ARCHITECTURES=x86_64 )
+					;;
+				arm64)
+					CMAKE_FLAGS+=( -DCMAKE_OSX_ARCHITECTURES=arm64 )
+					;;
+				universal)
+					echo "WARNING: Universal builds don't work yet as JDK does not have fat binaries"
+					CMAKE_FLAGS+=( -DCMAKE_OSX_ARCHITECTURES="x86_64 arm64" )
+					;;
+			esac
+			RESOURCES+=( libbridj.dylib )
+			TEST_RESOURCES+=( libtest.dylib libdependsOnTest.dylib )
+			;;
+		*)
+			RESOURCES+=( libbridj.so )
+			TEST_RESOURCES+=( libtest.so libdependsOnTest.so )
+			;;
+	esac
+
+	OS_ARCH=${OS}_${ARCH}
+	OUT=$BASE_DIR/target/$OS_ARCH
+	if [[ "${DEBUG:-0}" == "1" ]]; then
+		OUT="${OUT}_debug"
+	fi
+
+	echo "# Building for $OS on $ARCH into $OUT with cmake flags ${CMAKE_FLAGS[*]}"
+
+	mkdir -p $OUT
+	cd $OUT
+	if [[ "${CMAKE:-1}" != "0" ]]; then
+		cmake ../.. "${CMAKE_FLAGS[@]}"
+	fi
+
+	# TODO: Different command for VS build on Windows
+	make -j10
+
+	echo "Copying resources for $OS_ARCH"
+	# RESOURCES_DEST=$BASE_DIR/target/classes/org/bridj/lib/$OS_ARCH
+	# TEST_RESOURCES_DEST=$BASE_DIR/target/test-classes/org/bridj/lib/$OS_ARCH
+	# RESOURCES_DEST=$BASE_DIR/target/generated-resources/org/bridj/lib/$OS_ARCH
+	# TEST_RESOURCES_DEST=$BASE_DIR/target/generated-test-resources/org/bridj/lib/$OS_ARCH
+	RESOURCES_DEST=$BASE_DIR/src/main/resources/org/bridj/lib/$OS_ARCH
+	TEST_RESOURCES_DEST=$BASE_DIR/src/test/resources/org/bridj/lib/$OS_ARCH
+
+	mkdir -p "$RESOURCES_DEST"
+	mkdir -p "$TEST_RESOURCES_DEST"
+	cp "${RESOURCES[@]}" "$RESOURCES_DEST"
+	cp "${TEST_RESOURCES[@]}" "$TEST_RESOURCES_DEST"
+}
+
+if [[ -z "${OS:-}" ]]; then
+	OS="$(get_os)"
+fi
+
+if [[ "${ARCH:-all}" == "all" ]]; then
+	case $OS in
+		sunos)
+			build_libraries sunos x86 "$@"
+			build_libraries sunos x64 "$@"
+			;;
+		windows)
+			# See README.md on how to download the JDKs needed here
+			build_libraries windows x64 -DFORCE_JAVA_HOME=${JAVA_HOME_X64} "$@"
+			build_libraries windows arm64 -DFORCE_JAVA_HOME=${JAVA_HOME_ARM64} "$@"
+			;;
+		darwin)
+			build_libraries darwin x64 "$@"
+			build_libraries darwin arm64 "$@"
+			;;
+		*)
+			ARCH="$(get_arch)"
+			build_libraries $OS $ARCH "$@"
+	esac
+else
+	ARCH=${ARCH:-$(get_arch)}
+	build_libraries $OS $ARCH "$@"
+fi

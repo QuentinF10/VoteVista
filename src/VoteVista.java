@@ -1,5 +1,11 @@
+import javax.swing.*;
+
 public class VoteVista {
     public static void main(String[] args) {
-        System.out.println("Hello world!");
+        SwingUtilities.invokeLater(() -> {
+            System.out.println("Welcome to the voting system!");
+            new VoteVistaUI();
+        });
+
     }
 }
