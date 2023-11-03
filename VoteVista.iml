@@ -26,5 +26,7 @@
     <orderEntry type="library" name="ch.qos.logback.core-0.9.28" level="project" />
     <orderEntry type="library" name="core-3.5.1" level="project" />
     <orderEntry type="library" name="slf4j-api-1.7.0" level="project" />
+    <orderEntry type="library" name="java-json" level="project" />
+    <orderEntry type="library" name="opencv-2.4.1" level="project" />
   </component>
 </module>

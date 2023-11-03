@@ -1,14 +1,25 @@
 import com.github.sarxos.webcam.Webcam;
 import com.github.sarxos.webcam.WebcamPanel;
 import com.github.sarxos.webcam.WebcamResolution;
+import com.google.zxing.*;
+import com.google.zxing.client.j2se.BufferedImageLuminanceSource;
+import com.google.zxing.common.HybridBinarizer;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.Dimension;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.net.URL;
+import java.util.Base64;
 import javax.imageio.ImageIO;
+
 
 public class VoteVistaUI {
     private JFrame frame;
@@ -16,6 +27,7 @@ public class VoteVistaUI {
     private Image printerImage, cameraImage, backgroundImage, oregonImage;
     private Webcam webcam;
     private WebcamPanel webcamPanel;
+
 
     public VoteVistaUI() {
 
@@ -77,6 +89,8 @@ public class VoteVistaUI {
 
         // Display the window.
         frame.setVisible(true);
+        tablePanel = new TablePanel();
+
     }
 
     // Inner class for table panel
@@ -85,6 +99,7 @@ public class VoteVistaUI {
         private JLabel screenMessage;
         // New field to track camera status
         private boolean isCameraOn = false;
+
 
         public TablePanel() {
             // Initialize the screen as a JPanel
@@ -132,14 +147,94 @@ public class VoteVistaUI {
                     // Set the camera status to on
                     isCameraOn = true;
                     TablePanel.this.repaint(); // This refers to the outer class instance of TablePanel
+
+                    startQRScanning();
                 }
             });
-
 
             // Add the screen to the TablePanel
             this.setLayout(null); // Use absolute positioning
             this.add(screen);
         }
+
+        public void startQRScanning() {
+            QRScanner qrScanner = new QRScanner(this);
+            new Thread(() -> {
+                // Open the webcam if not already opened
+                if (!webcam.isOpen()) {
+                    webcam.open();
+                }
+
+                // Start processing frames
+                while (true) {
+                    // Check if the frame is available
+                    BufferedImage frameImage = webcam.getImage();
+                    if (frameImage != null) {
+                        System.out.println("looking for QR code");
+                        // Process the image to detect QR code
+                        LuminanceSource source = new BufferedImageLuminanceSource(frameImage);
+                        BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
+                        try {
+                            Result result = new MultiFormatReader().decode(bitmap);
+                            if (result != null) {
+                                // QR code found, handle result
+                               qrScanner.handleQRCodeResult(result);
+                                break; // Break the loop if you want to stop scanning after the first QR code is found
+                            }
+                        } catch (NotFoundException e) {
+                            // This is normal, not every frame will contain a QR code
+                        }
+                    }
+
+                    // Sleep briefly to control the loop timing and reduce CPU usage
+                    try {
+                        Thread.sleep(100); // Sleep for 100 milliseconds
+                    } catch (InterruptedException e) {
+                        // Handle the interruption appropriately
+                        break; // Exit the loop if the thread is interrupted
+                    }
+                }
+            }).start();
+        }
+
+        public void updateUIWithInfoAndImage(String info, BufferedImage image) {
+
+            // Debugging: Check if the image is not null and print its size
+            if (image != null) {
+                System.out.println("Image loaded: " + image.getWidth() + "x" + image.getHeight());
+            } else {
+                System.out.println("Image is null.");
+            }
+            // Stop the webcam feed and remove the webcam view
+            webcam.close();
+            screen.removeAll();
+
+            // Update the screen message with the voter info
+            screenMessage.setText(info);
+
+            // Add the message label back to the screen panel
+            screen.add(screenMessage, BorderLayout.NORTH);
+
+            // If there is an image, add it to the screen panel
+            if (image != null) {
+                ImageIcon imageIcon = new ImageIcon(image);
+                if (imageIcon.getImageLoadStatus() == MediaTracker.COMPLETE) {
+                    JLabel imageLabel = new JLabel(imageIcon);
+                    screen.add(imageLabel, BorderLayout.CENTER);
+                    System.out.println("Image added to the screen.");
+                } else {
+                    System.out.println("Image could not be loaded.");
+                }
+            }
+            // Refresh the screen panel to show the updated information
+            screen.revalidate();
+            screen.repaint();
+
+            // Set the camera status to off
+            isCameraOn = false;
+            TablePanel.this.repaint(); // Repaint to remove the red light from the camera icon
+        }
+
 
         @Override
         protected void paintComponent(Graphics g) {
@@ -174,7 +269,7 @@ public class VoteVistaUI {
             // Draw the screen stand and screen
             int screenWidth = 550;
             int screenHeight = 300;
-            int screenX = getWidth() / 2 -260;
+            int screenX = getWidth() / 2 - 260;
             int screenY = tabletopY - screenHeight - 50; // Position the screen on the table
             int borderWidth = 5; // The thickness of the screen border
             int standHeight = 50;
@@ -230,6 +325,4 @@ public class VoteVistaUI {
             }
         }
     }
-
-
 }
