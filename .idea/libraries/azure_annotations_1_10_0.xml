@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="azure-annotations-1.10.0">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/azure-annotations-1.10.0.jar!/" />
+      <root url="jar://$PROJECT_DIR$/azure-client-runtime-1.7.14.jar!/" />
+      <root url="jar://$PROJECT_DIR$/azure-cognitiveservices-faceapi-1.0.1-beta.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

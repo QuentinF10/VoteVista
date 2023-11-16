@@ -28,5 +28,8 @@
     <orderEntry type="library" name="slf4j-api-1.7.0" level="project" />
     <orderEntry type="library" name="java-json" level="project" />
     <orderEntry type="library" name="opencv-2.4.1" level="project" />
+    <orderEntry type="library" name="opencv-java-x86_64-linux-2.3.0" level="project" />
+    <orderEntry type="library" name="catalyst-java-sdk-0.0" level="project" />
+    <orderEntry type="library" name="azure-annotations-1.10.0" level="project" />
   </component>
 </module>

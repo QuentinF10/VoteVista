@@ -10,23 +10,32 @@ import org.json.JSONObject;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.Dimension;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
+import java.awt.event.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.util.Base64;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.TimerTask;
 import javax.imageio.ImageIO;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableColumn;
 
 
 public class VoteVistaUI {
-    private JFrame frame;
+    public JFrame frame;
     private TablePanel tablePanel;
     private Image printerImage, cameraImage, backgroundImage, oregonImage;
     private Webcam webcam;
     private WebcamPanel webcamPanel;
+    //  private FaceRecognition faceRecognition; // Here we define the faceRecognition object
+
 
 
     public VoteVistaUI() {
@@ -38,6 +47,8 @@ public class VoteVistaUI {
         webcamPanel.setMirrored(true);
         webcamPanel.setFPSDisplayed(true);
         webcamPanel.setFillArea(true);
+
+
 
         // Create the main window
         frame = new JFrame("VoteVista");
@@ -91,7 +102,11 @@ public class VoteVistaUI {
         frame.setVisible(true);
         tablePanel = new TablePanel();
 
+
     }
+   // public void startFacialRecognition() {
+     //   faceRecognition.startRecognition();
+   // }
 
     // Inner class for table panel
     class TablePanel extends JPanel {
@@ -104,7 +119,7 @@ public class VoteVistaUI {
         public TablePanel() {
             // Initialize the screen as a JPanel
             screen = new JPanel();
-            screen.setBounds(333, 263, 550, 300); // Set the position and size to match your screen area
+            screen.setBounds(273, 263, 700, 300); // Set the position and size to match your screen area
             screen.setBorder(BorderFactory.createLineBorder(Color.BLACK, 5)); // Black border to represent the screen edge
 
             // Initialize the screen message as a JLabel
@@ -126,27 +141,7 @@ public class VoteVistaUI {
                 @Override
                 public void mouseClicked(MouseEvent e) {
                     // Adjust the size of the webcam panel
-                    Dimension size = new Dimension(320, 240);
-                    webcam.setViewSize(size); // Set the new size for the webcam view
 
-                    // Create a new panel for the webcam if not already done
-                    WebcamPanel webcamPanel = new WebcamPanel(webcam);
-                    webcamPanel.setPreferredSize(size);
-
-                    // Remove existing components from screen if necessary
-                    screen.removeAll();
-
-                    // Add the webcam panel to the screen
-                    screen.add(webcamPanel, BorderLayout.CENTER);
-
-
-                    // Refresh the screen panel to show the webcam panel
-                    screen.revalidate();
-                    screen.repaint();
-
-                    // Set the camera status to on
-                    isCameraOn = true;
-                    TablePanel.this.repaint(); // This refers to the outer class instance of TablePanel
 
                     startQRScanning();
                 }
@@ -155,10 +150,39 @@ public class VoteVistaUI {
             // Add the screen to the TablePanel
             this.setLayout(null); // Use absolute positioning
             this.add(screen);
+
+
+        }
+
+        public void setupWebcam() {
+            Dimension size = new Dimension(320, 240);
+            webcam.setViewSize(size); // Set the new size for the webcam view
+
+            // Create a new panel for the webcam if not already done
+            WebcamPanel webcamPanel = new WebcamPanel(webcam);
+            webcamPanel.setPreferredSize(size);
+
+            // Remove existing components from screen if necessary
+            screen.removeAll();
+
+            // Add the webcam panel to the screen
+            screen.add(webcamPanel, BorderLayout.CENTER);
+
+
+            // Refresh the screen panel to show the webcam panel
+            screen.revalidate();
+            screen.repaint();
+
+            // Set the camera status to on
+            isCameraOn = true;
+            TablePanel.this.repaint(); // This refers to the outer class instance of TablePanel
         }
 
         public void startQRScanning() {
-            QRScanner qrScanner = new QRScanner(this);
+
+            setupWebcam();
+
+            QRScanner qrScanner = new QRScanner(this, VoteVistaUI.this);
             new Thread(() -> {
                 // Open the webcam if not already opened
                 if (!webcam.isOpen()) {
@@ -178,7 +202,7 @@ public class VoteVistaUI {
                             Result result = new MultiFormatReader().decode(bitmap);
                             if (result != null) {
                                 // QR code found, handle result
-                               qrScanner.handleQRCodeResult(result);
+                                qrScanner.handleQRCodeResult(result);
                                 break; // Break the loop if you want to stop scanning after the first QR code is found
                             }
                         } catch (NotFoundException e) {
@@ -195,6 +219,18 @@ public class VoteVistaUI {
                     }
                 }
             }).start();
+        }
+
+        public void promptForIDScan() {
+            // Show a message to the user
+            JOptionPane.showMessageDialog(frame, "Scan your ID again.");
+            // Clear the screen and prepare it for showing the webcam again
+            screen.removeAll();
+            screen.revalidate();
+            screen.repaint();
+
+            // Start the webcam for scanning
+            startQRScanning();
         }
 
         public void updateUIWithInfoAndImage(String info, BufferedImage image) {
@@ -235,6 +271,196 @@ public class VoteVistaUI {
             TablePanel.this.repaint(); // Repaint to remove the red light from the camera icon
         }
 
+        // New method to handle the photo capture process
+        public void startPhotoCaptureProcess() {
+            // Display the webcam feed to the user
+            setupWebcam();
+
+            // Prepare the countdown dialog and label
+            final JDialog countdownDialog = new JDialog(frame, "Authentication", true);
+            JLabel countdownLabel = new JLabel("<html>A picture of you will be taken in 5 seconds after you close this dialog.<br/>Look right at the camera.</html>", SwingConstants.CENTER);
+            countdownDialog.add(countdownLabel);
+            countdownDialog.setSize(250, 100);
+            countdownDialog.setLocationRelativeTo(frame);
+
+            // Create a Swing timer for countdown
+            final int[] secondsPassed = {5};
+            javax.swing.Timer timer = new javax.swing.Timer(1000, new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    secondsPassed[0]--;
+                    countdownLabel.setText(String.valueOf(secondsPassed[0]));
+
+                    if (secondsPassed[0] <= 0) {
+                        ((javax.swing.Timer)e.getSource()).stop();
+                        countdownDialog.dispose();
+
+                        // Capture and display the image here
+                        captureAndDisplayImage();
+                    }
+                }
+            });
+            countdownDialog.setVisible(true);
+            timer.start();
+        }
+
+        private void captureAndDisplayImage() {
+            BufferedImage capturedImage = webcam.getImage();
+            ImageIcon imageIcon = new ImageIcon(capturedImage);
+            JLabel imageLabel = new JLabel(imageIcon);
+
+            // Create a custom dialog
+            JDialog dialog = new JDialog(frame, "Captured Photo", true);
+            dialog.setLayout(new BorderLayout());
+            dialog.add(imageLabel, BorderLayout.CENTER);
+
+            // Create a panel for buttons
+            JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+            JButton yesButton = new JButton("Yes");
+            JButton noButton = new JButton("No");
+            buttonPanel.add(yesButton);
+            buttonPanel.add(noButton);
+            dialog.add(buttonPanel, BorderLayout.SOUTH);
+
+            // Set dialog size
+            dialog.setSize(new Dimension(300, 280)); // Set your desired size
+
+            // Set dialog location relative to tablePanel
+            dialog.setLocationRelativeTo(screen);
+
+            // Button actions
+            yesButton.addActionListener(e -> {
+                isCameraOn = false;
+                displayVotingInterface();
+                dialog.dispose();
+            });
+            noButton.addActionListener(e -> {
+                startPhotoCaptureProcess();
+                dialog.dispose();
+            });
+
+            // Show the dialog
+            dialog.setVisible(true);
+        }
+
+
+
+        public void displayVotingInterface() {
+            // Stop the webcam feed and remove the webcam view
+            // webcam.close(); // Uncomment if webcam is being used
+            screen.removeAll();
+
+            // Column names
+            Object[] columnNames = {"U.S Senator", "State Senator", "Representative", "Commissioner", "Sheriff", "Mayor", "District Judge"};
+
+            // Initialize the custom table model
+            CustomTableModel mainModel = new CustomTableModel(5, 8);
+
+            mainModel.setColumnIdentifiers(new Object[]{"","U.S Senator", "State Senator", "Representative", "Commissioner", "Sheriff", "Mayor", "District Judge"});
+            // Populate the table with cand idate names (example names used here)
+            //Names of candidates
+            Object candidates[]={"Lillie Matthews","Ben Reed","Angelo Parker","Daniel Anders","John Jordan","Rhonda Barker","Louis McCoy",
+                    "Douglas Key","Lillie Matthews","Lillie Matthews","Lillie Matthews","Lillie Matthews","Lillie Matthews","Lillie Matthews",
+                    "Kyle Burch","Lillie Matthews","Lillie Matthews", "Lillie Matthews","Lillie Matthews","Lillie Matthews","Lillie Matthews",
+                    "David Tapia","Lillie Matthews","Lillie Matthews", "Lillie Matthews","Lillie Matthews","Lillie Matthews","Lillie Matthews",
+                    "Terri Carter","Art Thomas","Bell Francine", "Theo Smith","Scott Marion","Antoine Scott","Natalie Ray",};
+
+
+            int candidateIndex = 0;
+
+            String[] rowNames = {"Democratic", "Republican", "Conservative", "Working Families", "Independence"};
+            for (int i = 0; i < rowNames.length; i++) {
+                mainModel.setValueAt(rowNames[i], i, 0);
+            }
+            for (int row = 0; row < mainModel.getRowCount(); row++) {
+                for (int col = 1; col < mainModel.getColumnCount(); col++) {
+                    if (candidateIndex < candidates.length) {
+                        mainModel.setValueAt(candidates[candidateIndex], row, col);
+                        candidateIndex++;
+                    } else {
+                        mainModel.setValueAt("", row, col);
+                    }
+                }
+            }
+
+            // Create and set up the main table
+            JTable mainTable = new JTable(mainModel);
+            mainTable.setRowHeight(screen.getHeight() / 5); // Adjust row height
+
+            // Custom cell renderer
+            mainTable.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+                @Override
+                public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+                    Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                    if (((CustomTableModel) table.getModel()).isSelected(row, column)) {
+                        c.setBackground(Color.GREEN);
+                    } else {
+                        c.setBackground(Color.WHITE);
+                    }
+                    return c;
+                }
+            });
+
+            // Mouse listener for cell selection
+            mainTable.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    int row = mainTable.rowAtPoint(e.getPoint());
+                    int column = mainTable.columnAtPoint(e.getPoint());
+                    if(column>0){
+                        mainModel.setSelected(row, column, !mainModel.isSelected(row, column));
+                    }
+
+                    // Check if at least one cell in each column is selected
+                    if (isEachColumnSelected(mainTable)) {
+                        int confirm = JOptionPane.showConfirmDialog(
+                                frame,
+                                "All columns have at least one selection. Do you want to see a recap of your votes?",
+                                "Confirm Vote Recap",
+                                JOptionPane.YES_NO_OPTION
+                        );
+
+                        if (confirm == JOptionPane.YES_OPTION) {
+                            // Logic to show recap of votes
+                            showVoteRecap();
+                        }
+                    }
+
+                }
+            });
+
+
+            // Add the table to the screen within a scroll pane
+            JScrollPane scrollPane = new JScrollPane(mainTable);
+            screen.add(scrollPane, BorderLayout.CENTER);
+
+            // Update the screen
+            screen.revalidate();
+            screen.repaint();
+        }
+
+        private boolean isEachColumnSelected(JTable table) {
+            CustomTableModel model = (CustomTableModel) table.getModel();
+            for (int col = 1; col < table.getColumnCount(); col++) {
+                boolean columnHasSelection = false;
+                for (int row = 0; row < table.getRowCount(); row++) {
+                    if (model.isSelected(row, col)) {
+                        columnHasSelection = true;
+                        break;
+                    }
+                }
+                if (!columnHasSelection) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private void showVoteRecap() {
+            // Logic to display the recap of votes
+            // This method needs to be implemented
+        }
+
 
         @Override
         protected void paintComponent(Graphics g) {
@@ -267,9 +493,9 @@ public class VoteVistaUI {
             g.fillRect(tabletopX + tabletopWidth - legWidth, tabletopY + tabletopHeight, legWidth, legHeight); // Right front leg
 
             // Draw the screen stand and screen
-            int screenWidth = 550;
+            int screenWidth = 700;
             int screenHeight = 300;
-            int screenX = getWidth() / 2 - 260;
+            int screenX = getWidth() / 2 - 320;
             int screenY = tabletopY - screenHeight - 50; // Position the screen on the table
             int borderWidth = 5; // The thickness of the screen border
             int standHeight = 50;
@@ -278,7 +504,7 @@ public class VoteVistaUI {
 
             // Draw the stand
             g.setColor(Color.GRAY);
-            int standX = screenX + screenWidth / 2 - standWidth / 2;
+            int standX = 610;
             int standY = screenY + screenHeight;
             g.fillRect(standX, standY, standWidth, standHeight);
 
