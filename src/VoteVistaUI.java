@@ -4,28 +4,16 @@ import com.github.sarxos.webcam.WebcamResolution;
 import com.google.zxing.*;
 import com.google.zxing.client.j2se.BufferedImageLuminanceSource;
 import com.google.zxing.common.HybridBinarizer;
-import org.json.JSONException;
-import org.json.JSONObject;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.Dimension;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
-import java.net.URL;
-import java.util.Base64;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.TimerTask;
 import javax.imageio.ImageIO;
-import javax.swing.event.ListSelectionEvent;
-import javax.swing.event.ListSelectionListener;
 import javax.swing.table.DefaultTableCellRenderer;
-import javax.swing.table.DefaultTableModel;
-import javax.swing.table.TableColumn;
 
 
 public class VoteVistaUI {
@@ -56,6 +44,17 @@ public class VoteVistaUI {
         frame.setSize(1200, 800);
         frame.setResizable(false); // Prevent the window from being resized
 
+        /** Load and resize the paper stack image
+        try {
+            Image originalPaperStackImage = ImageIO.read(new File("C:\\Users\\Quentin\\OneDrive - ESIEE Paris\\UNM\\CS460\\VoteVista\\src/paper.png")); // Replace with your paper stack image path
+            int paperStackImageWidth = 150; // Desired width
+            int paperStackImageHeight = 70; // Desired height
+            paperStack = originalPaperStackImage.getScaledInstance(paperStackImageWidth, paperStackImageHeight, Image.SCALE_SMOOTH);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            paperStack = null;
+        }*/
         // Load the background image
         try {
             backgroundImage = ImageIO.read(new File("C:\\Users\\Quentin\\OneDrive - ESIEE Paris\\UNM\\CS460\\VoteVista\\src/american.jpg")); // Replace with your background image path
@@ -113,17 +112,72 @@ public class VoteVistaUI {
         private JPanel screen;
         private JLabel screenMessage;
         // New field to track camera status
-        private boolean isCameraOn = false;
+        private boolean isCameraOn = false, isPrinterOn = false;
+        private JLabel paperLabel;
+        private boolean isDraggingPaper = false;
+        private int paperCount = 20; // Number of papers in the stack
+
 
 
         public TablePanel() {
+
+
+            // Initialize the paper label (invisible at first)
+            paperLabel = new JLabel();
+            paperLabel.setBackground(Color.WHITE); // Set the paper color
+            paperLabel.setOpaque(true);
+            paperLabel.setSize(100, 70); // Set paper size
+            paperLabel.setVisible(false);
+
+            // Mouse listener for the paper stack
+            this.addMouseListener(new MouseAdapter() {
+                public void mouseClicked(MouseEvent e) {
+                    if (isClickOnPaperStack(e.getPoint()) && paperCount > 0 && !isDraggingPaper && !isPrinterOn) {
+                        takeOnePaper(e.getPoint());
+                    }
+                }
+            });
+
+            // Mouse motion listener for dragging the paper
+            paperLabel.addMouseMotionListener(new MouseMotionAdapter() {
+                public void mouseDragged(MouseEvent e) {
+                    if (isDraggingPaper) {
+                        Point p = SwingUtilities.convertPoint(paperLabel, e.getPoint(), TablePanel.this);
+                        paperLabel.setLocation(p.x - paperLabel.getWidth() / 2, p.y - paperLabel.getHeight() / 2);
+                    }
+                }
+            });
+
+            // Mouse listener for dropping the paper
+            paperLabel.addMouseListener(new MouseAdapter() {
+                public void mouseReleased(MouseEvent e) {
+                    if (isDraggingPaper && isPaperOverPrinter(paperLabel.getLocation())) {
+                        System.out.println("Paper dropped on printer!");
+                        isPrinterOn = true;
+                        // Decrease paper count and reset label
+                        paperCount--;
+                        isDraggingPaper = false;
+                        paperLabel.setVisible(false);
+                        repaint(); // Repaint to update the paper stack
+
+                        // Trigger the voting process here
+                    } else if (isDraggingPaper) {
+                        // If not dropped on printer, hide the paper again
+                        paperLabel.setVisible(false);
+                        isDraggingPaper = false;
+                        isPrinterOn = false;
+                    }
+                }
+            });
+
+            this.add(paperLabel);
             // Initialize the screen as a JPanel
             screen = new JPanel();
             screen.setBounds(273, 263, 700, 300); // Set the position and size to match your screen area
             screen.setBorder(BorderFactory.createLineBorder(Color.BLACK, 5)); // Black border to represent the screen edge
 
             // Initialize the screen message as a JLabel
-            screenMessage = new JLabel("<html><center>Welcome To Oregon State,<br>Touch the screen to start voting</center></html>");
+            screenMessage = new JLabel("<html><center>Welcome To Oregon State,<br>Drop paper on printer & Touch the screen to start voting</center></html>");
             screenMessage.setForeground(Color.BLACK);
             screenMessage.setHorizontalAlignment(JLabel.CENTER);
             screenMessage.setVerticalAlignment(JLabel.CENTER);
@@ -137,13 +191,15 @@ public class VoteVistaUI {
             screen.setBackground(Color.WHITE);
 
             // When the screen is touched
+
             screen.addMouseListener(new MouseAdapter() {
                 @Override
                 public void mouseClicked(MouseEvent e) {
                     // Adjust the size of the webcam panel
+                    if(isPrinterOn) {
+                        startQRScanning();
+                    }
 
-
-                    startQRScanning();
                 }
             });
 
@@ -154,6 +210,24 @@ public class VoteVistaUI {
 
         }
 
+        private boolean isClickOnPaperStack(Point clickPoint) {
+            // Define the area where the paper stack is
+            Rectangle paperStackArea = new Rectangle(800, 620, 100, 150);
+            return paperStackArea.contains(clickPoint);
+        }
+
+        private void takeOnePaper(Point startPoint) {
+            paperLabel.setBorder(BorderFactory.createLineBorder(Color.BLACK));
+            paperLabel.setLocation(startPoint);
+            paperLabel.setVisible(true);
+            isDraggingPaper = true;
+        }
+        private boolean isPaperOverPrinter(Point location) {
+            // Define the printer area bounds
+            // (You need to adjust these values based on your UI)
+            Rectangle printerArea = new Rectangle(getWidth() / 2 + 385, getHeight() - 150 - 80,150,150);
+            return printerArea.contains(paperLabel.getBounds());
+        }
         public void setupWebcam() {
             Dimension size = new Dimension(320, 240);
             webcam.setViewSize(size); // Set the new size for the webcam view
@@ -472,7 +546,6 @@ public class VoteVistaUI {
                 g.drawImage(backgroundImage, 0, 0, this.getWidth(), this.getHeight(), this);
             }
 
-
             // Draw the tabletop
             int tabletopWidth = getWidth() - 100; // Table width is less than panel width
             int tabletopHeight = 100; // Arbitrary height for tabletop
@@ -529,10 +602,20 @@ public class VoteVistaUI {
 
             // Draw the printer image if it's loaded
             if (printerImage != null) {
-                int printerX = getWidth() / 2 + 350; // Position the printer next to the screen
+                int printerX = getWidth() / 2 + 385; // Position the printer next to the screen
                 int printerY = getHeight() - 150 - 80; // Align with the screen on the table
                 g.drawImage(printerImage, printerX, printerY, this);
+
+                if (isPrinterOn) {
+                    g.setColor(Color.GREEN);
+                    int lightDiameter = 12;
+                    int lightX = printerX + 115;
+                    int lightY = printerY + 45;
+                    g.fillOval(lightX, lightY, lightDiameter, lightDiameter);
+                }
             }
+
+            drawPaperStack(g, 800, 620); // Adjust x and y to position the stack
 
             // Draw the camera image if it's loaded
             if (cameraImage != null) {
@@ -550,5 +633,21 @@ public class VoteVistaUI {
                 }
             }
         }
+        private void drawPaperStack(Graphics g, int x, int y) {
+            int paperWidth = 100;
+            int paperHeight = 70;
+            int shadowOffset = 2; // Offset for the shadow effect
+
+            for (int i = 0; i < paperCount; i++) {
+                // Draw shadow
+                g.setColor(Color.GRAY);
+                g.fillRect(x + shadowOffset, y + shadowOffset + i, paperWidth, paperHeight);
+
+                // Draw paper
+                g.setColor(Color.WHITE);
+                g.fillRect(x, y + i, paperWidth, paperHeight);
+            }
+        }
     }
+
 }
