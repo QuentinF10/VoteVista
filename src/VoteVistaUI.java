@@ -4,6 +4,7 @@ import com.github.sarxos.webcam.WebcamResolution;
 import com.google.zxing.*;
 import com.google.zxing.client.j2se.BufferedImageLuminanceSource;
 import com.google.zxing.common.HybridBinarizer;
+import org.json.JSONException;
 
 import javax.swing.*;
 import java.awt.*;
@@ -19,15 +20,17 @@ import javax.swing.table.DefaultTableCellRenderer;
 public class VoteVistaUI {
     public JFrame frame;
     private TablePanel tablePanel;
-    private Image printerImage, cameraImage, backgroundImage, oregonImage;
+    private Image printerImage, cameraImage, backgroundImage, oregonImage, adminImage;
     private Webcam webcam;
     private WebcamPanel webcamPanel;
-    //  private FaceRecognition faceRecognition; // Here we define the faceRecognition object
-
+    public boolean idScanned = false;
+    public String firstName, lastName;
 
 
     public VoteVistaUI() {
 
+        NetworkCheck networkCheck = new NetworkCheck(this);
+        networkCheck.startNetworkMonitoring();
         // Initialize the webcam
         webcam = Webcam.getDefault();
         webcam.setViewSize(WebcamResolution.VGA.getSize());
@@ -44,17 +47,6 @@ public class VoteVistaUI {
         frame.setSize(1200, 800);
         frame.setResizable(false); // Prevent the window from being resized
 
-        /** Load and resize the paper stack image
-        try {
-            Image originalPaperStackImage = ImageIO.read(new File("C:\\Users\\Quentin\\OneDrive - ESIEE Paris\\UNM\\CS460\\VoteVista\\src/paper.png")); // Replace with your paper stack image path
-            int paperStackImageWidth = 150; // Desired width
-            int paperStackImageHeight = 70; // Desired height
-            paperStack = originalPaperStackImage.getScaledInstance(paperStackImageWidth, paperStackImageHeight, Image.SCALE_SMOOTH);
-
-        } catch (IOException e) {
-            e.printStackTrace();
-            paperStack = null;
-        }*/
         // Load the background image
         try {
             backgroundImage = ImageIO.read(new File("C:\\Users\\Quentin\\OneDrive - ESIEE Paris\\UNM\\CS460\\VoteVista\\src/american.jpg")); // Replace with your background image path
@@ -93,6 +85,15 @@ public class VoteVistaUI {
         }
 
 
+          try {
+         Image originalAdminImage = ImageIO.read(new File("C:\\Users\\Quentin\\OneDrive - ESIEE Paris\\UNM\\CS460\\VoteVista\\src/admin.png")); // Replace with your image path
+         int adminImageWidth = 30; // Desired width
+         int adminImageHeight = 30; // Desired height
+         adminImage = originalAdminImage.getScaledInstance(adminImageWidth, adminImageHeight, Image.SCALE_SMOOTH);
+         } catch (IOException e) {
+         e.printStackTrace();
+         adminImage = null;
+         }
         // Create the table panel where the screen and printer will be placed
         tablePanel = new TablePanel();
         frame.add(tablePanel);
@@ -103,14 +104,12 @@ public class VoteVistaUI {
 
 
     }
-   // public void startFacialRecognition() {
-     //   faceRecognition.startRecognition();
-   // }
+
 
     // Inner class for table panel
     class TablePanel extends JPanel {
         private JPanel screen;
-        private JLabel screenMessage;
+        private JLabel screenMessage,admin;
         // New field to track camera status
         private boolean isCameraOn = false, isPrinterOn = false;
         private JLabel paperLabel;
@@ -171,10 +170,32 @@ public class VoteVistaUI {
             });
 
             this.add(paperLabel);
+
+
+
+
             // Initialize the screen as a JPanel
             screen = new JPanel();
             screen.setBounds(273, 263, 700, 300); // Set the position and size to match your screen area
             screen.setBorder(BorderFactory.createLineBorder(Color.BLACK, 5)); // Black border to represent the screen edge
+
+
+            // Initialize and add the admin label
+            if (adminImage != null) {
+                admin = new JLabel(new ImageIcon(adminImage));
+                int xPos = screen.getWidth() - adminImage.getWidth(this) - 10;
+                int yPos = 10;
+                admin.setBounds(xPos, yPos, adminImage.getWidth(this), adminImage.getHeight(this));
+
+                admin.addMouseListener(new MouseAdapter() {
+                    @Override
+                    public void mouseClicked(MouseEvent e) {
+                        AdminDialog loginDialog = new AdminDialog(frame); // 'frame' is your main JFrame
+                        loginDialog.setVisible(true);
+                    }
+                });
+                screen.add(admin);
+            }
 
             // Initialize the screen message as a JLabel
             screenMessage = new JLabel("<html><center>Welcome To Oregon State,<br>Drop paper on printer & Touch the screen to start voting</center></html>");
@@ -190,6 +211,7 @@ public class VoteVistaUI {
             // Set the background of the screen to white to represent the inactive screen
             screen.setBackground(Color.WHITE);
 
+
             // When the screen is touched
 
             screen.addMouseListener(new MouseAdapter() {
@@ -197,7 +219,7 @@ public class VoteVistaUI {
                 public void mouseClicked(MouseEvent e) {
                     // Adjust the size of the webcam panel
                     if(isPrinterOn) {
-                        startQRScanning();
+                        displayStep();
                     }
 
                 }
@@ -208,6 +230,48 @@ public class VoteVistaUI {
             this.add(screen);
 
 
+        }
+
+        public void displayStep() {
+            if (!idScanned) {
+                // Create a JOptionPane
+                JOptionPane optionPane = new JOptionPane(
+                        "<html><center>First, scan your National Identification Card</center></html>",
+                        JOptionPane.INFORMATION_MESSAGE
+                        );
+
+                // Create a JDialog from JOptionPane
+                JDialog dialog = optionPane.createDialog("Instructions");
+
+                // Set location
+                dialog.setLocation(screen.getX()+180, screen.getY()+100); // Set your desired X and Y coordinates
+
+                // Show the dialog
+                dialog.setVisible(true);
+
+                // After the dialog is dismissed
+                startQRScanning();
+            }else{
+                    if (!idScanned) {
+                        // Create a JOptionPane
+                        JOptionPane optionPane = new JOptionPane(
+                                "<html><center>Now, scan your Voter Identification Card</center></html>",
+                                JOptionPane.INFORMATION_MESSAGE);
+
+                        // Create a JDialog from JOptionPane
+                        JDialog dialog = optionPane.createDialog("Instructions");
+
+                        // Set location
+                        dialog.setLocation(100, 200); // Set your desired X and Y coordinates
+
+                        // Show the dialog
+                        dialog.setVisible(true);
+
+                        // After the dialog is dismissed
+                        startQRScanning();
+                    }
+
+            }
         }
 
         private boolean isClickOnPaperStack(Point clickPoint) {
@@ -252,6 +316,7 @@ public class VoteVistaUI {
             TablePanel.this.repaint(); // This refers to the outer class instance of TablePanel
         }
 
+
         public void startQRScanning() {
 
             setupWebcam();
@@ -276,11 +341,18 @@ public class VoteVistaUI {
                             Result result = new MultiFormatReader().decode(bitmap);
                             if (result != null) {
                                 // QR code found, handle result
-                                qrScanner.handleQRCodeResult(result);
+                                if(!idScanned){
+                                    qrScanner.handleQRCodeIDResult(result);
+                                }else {
+                                    qrScanner.handleQRCodeVotingResult(result);
+                                }
+
                                 break; // Break the loop if you want to stop scanning after the first QR code is found
                             }
                         } catch (NotFoundException e) {
                             // This is normal, not every frame will contain a QR code
+                        } catch (JSONException e) {
+                            throw new RuntimeException(e);
                         }
                     }
 
@@ -344,79 +416,6 @@ public class VoteVistaUI {
             isCameraOn = false;
             TablePanel.this.repaint(); // Repaint to remove the red light from the camera icon
         }
-
-        // New method to handle the photo capture process
-        public void startPhotoCaptureProcess() {
-            // Display the webcam feed to the user
-            setupWebcam();
-
-            // Prepare the countdown dialog and label
-            final JDialog countdownDialog = new JDialog(frame, "Authentication", true);
-            JLabel countdownLabel = new JLabel("<html>A picture of you will be taken in 5 seconds after you close this dialog.<br/>Look right at the camera.</html>", SwingConstants.CENTER);
-            countdownDialog.add(countdownLabel);
-            countdownDialog.setSize(250, 100);
-            countdownDialog.setLocationRelativeTo(frame);
-
-            // Create a Swing timer for countdown
-            final int[] secondsPassed = {5};
-            javax.swing.Timer timer = new javax.swing.Timer(1000, new ActionListener() {
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                    secondsPassed[0]--;
-                    countdownLabel.setText(String.valueOf(secondsPassed[0]));
-
-                    if (secondsPassed[0] <= 0) {
-                        ((javax.swing.Timer)e.getSource()).stop();
-                        countdownDialog.dispose();
-
-                        // Capture and display the image here
-                        captureAndDisplayImage();
-                    }
-                }
-            });
-            countdownDialog.setVisible(true);
-            timer.start();
-        }
-
-        private void captureAndDisplayImage() {
-            BufferedImage capturedImage = webcam.getImage();
-            ImageIcon imageIcon = new ImageIcon(capturedImage);
-            JLabel imageLabel = new JLabel(imageIcon);
-
-            // Create a custom dialog
-            JDialog dialog = new JDialog(frame, "Captured Photo", true);
-            dialog.setLayout(new BorderLayout());
-            dialog.add(imageLabel, BorderLayout.CENTER);
-
-            // Create a panel for buttons
-            JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
-            JButton yesButton = new JButton("Yes");
-            JButton noButton = new JButton("No");
-            buttonPanel.add(yesButton);
-            buttonPanel.add(noButton);
-            dialog.add(buttonPanel, BorderLayout.SOUTH);
-
-            // Set dialog size
-            dialog.setSize(new Dimension(300, 280)); // Set your desired size
-
-            // Set dialog location relative to tablePanel
-            dialog.setLocationRelativeTo(screen);
-
-            // Button actions
-            yesButton.addActionListener(e -> {
-                isCameraOn = false;
-                displayVotingInterface();
-                dialog.dispose();
-            });
-            noButton.addActionListener(e -> {
-                startPhotoCaptureProcess();
-                dialog.dispose();
-            });
-
-            // Show the dialog
-            dialog.setVisible(true);
-        }
-
 
 
         public void displayVotingInterface() {
@@ -648,6 +647,13 @@ public class VoteVistaUI {
                 g.fillRect(x, y + i, paperWidth, paperHeight);
             }
         }
+    }
+    public void updateUIForNetworkIssue() {
+        // Call this method from the Swing event dispatch thread
+        SwingUtilities.invokeLater(() -> {
+            JOptionPane.showMessageDialog(frame, "Connection lost, restart voting process.");
+            // Any additional logic to handle the restart of the voting process
+        });
     }
 
 }
