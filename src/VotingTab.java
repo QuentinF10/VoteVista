@@ -1,4 +1,3 @@
-package VoteVista;
 import javax.swing.*;
 import java.awt.*;
 import java.sql.Connection;
@@ -39,7 +38,7 @@ public class VotingTab {
         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
         mainPanel.setBorder(BorderFactory.createEmptyBorder(50, 50, 50, 50));
 
-        String url = "jdbc:mysql://localhost:3306/votevista"; 
+        String url = "jdbc:mysql://localhost:3306/votevista";
         String username = "root";
         String password = "root";
         ArrayList<String> candidateInfoList = new ArrayList<>();
@@ -72,7 +71,7 @@ public class VotingTab {
                 try (Connection connection = DriverManager.getConnection(url, username, password)) {
                     int electeurID = getLastVoterID(connection);
                     connection.setAutoCommit(false);
-                    
+
                     updateVoteCount(connection, (String) USSenatorBox.getSelectedItem(), electeurID, getPositionIDForTitle(connection, "U.S. Senator"));
                     updateVoteCount(connection, (String) MemberOfHouseOfRepresentativesBox.getSelectedItem(), electeurID, getPositionIDForTitle(connection, "Member of House of Representatives"));
                     updateVoteCount(connection, (String) stateSenatorBox.getSelectedItem(), electeurID, getPositionIDForTitle(connection, "State Senator"));
@@ -87,13 +86,13 @@ public class VotingTab {
 
                     String userInfo = getUserInfo(connection, electeurID);
                     String voteInfo = getVoteInfo(connection, electeurID);
-                    
+
                     EventQueue.invokeLater(() -> {
                         frame.setVisible(false);
                         Receipt receipt = new Receipt(userInfo, voteInfo);
                         receipt.setVisible(true);
                     });
-                    
+
                 } catch (SQLException ex) {
                     ex.printStackTrace();
                     JOptionPane.showMessageDialog(frame, "Error recording your vote: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
@@ -123,7 +122,7 @@ public class VotingTab {
         int lastVoterID = 0;
         String sql = "SELECT VoterID FROM voters ORDER BY VoterID DESC LIMIT 1";
         try (PreparedStatement preparedStatement = connection.prepareStatement(sql);
-            ResultSet resultSet = preparedStatement.executeQuery()) {
+             ResultSet resultSet = preparedStatement.executeQuery()) {
             if (resultSet.next()) {
                 lastVoterID = resultSet.getInt("VoterID");
             }
@@ -154,14 +153,14 @@ public class VotingTab {
         String lastName = parts[0];
         String firstName = parts[1];
         int candidateID = getCandidateID(connection, lastName, firstName);
-    
+
         String sqlUpdateCandidate = "UPDATE candidates SET VoteCount = VoteCount + 1 " +
-                                    "WHERE CandidateID = ?";
+                "WHERE CandidateID = ?";
         try (PreparedStatement preparedStatement = connection.prepareStatement(sqlUpdateCandidate)) {
             preparedStatement.setInt(1, candidateID);
             preparedStatement.executeUpdate();
         }
-    
+
         String sqlInsertVote = "INSERT INTO Votes (VoterID, CandidateID, Timestamp, PositionID) VALUES (?, ?, NOW(), ?)";
         try (PreparedStatement preparedStatement = connection.prepareStatement(sqlInsertVote)) {
             preparedStatement.setInt(1, electeurID);
@@ -170,7 +169,7 @@ public class VotingTab {
             preparedStatement.executeUpdate();
         }
     }
-    
+
     private int getCandidateID(Connection connection, String lastName, String firstName) throws SQLException {
         String sql = "SELECT CandidateID FROM candidates WHERE LastName = ? AND FirstName = ?";
         try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
@@ -224,18 +223,18 @@ public class VotingTab {
     private String getVoteInfo(Connection connection, int electeurID) throws SQLException {
         StringBuilder voteInfoBuilder = new StringBuilder();
         String sql = "SELECT " +
-                     "v.Timestamp, " +
-                     "c.FirstName AS CandidateFirstName, " +
-                     "c.LastName AS CandidateLastName, " +
-                     "p.PartyName, " +
-                     "pos.PositionName " +
-                     "FROM votes AS v " +
-                     "INNER JOIN candidates AS c ON v.CandidateID = c.CandidateID " +
-                     "INNER JOIN politicalparties AS p ON c.PartyID = p.PartyID " +
-                     "INNER JOIN positions AS pos ON v.PositionID = pos.PositionID " +
-                     "WHERE v.VoterID = ? " +
-                     "ORDER BY v.Timestamp";
-    
+                "v.Timestamp, " +
+                "c.FirstName AS CandidateFirstName, " +
+                "c.LastName AS CandidateLastName, " +
+                "p.PartyName, " +
+                "pos.PositionName " +
+                "FROM votes AS v " +
+                "INNER JOIN candidates AS c ON v.CandidateID = c.CandidateID " +
+                "INNER JOIN politicalparties AS p ON c.PartyID = p.PartyID " +
+                "INNER JOIN positions AS pos ON v.PositionID = pos.PositionID " +
+                "WHERE v.VoterID = ? " +
+                "ORDER BY v.Timestamp";
+
         try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
             preparedStatement.setInt(1, electeurID);
             try (ResultSet resultSet = preparedStatement.executeQuery()) {
@@ -252,7 +251,7 @@ public class VotingTab {
         }
         return voteInfoBuilder.toString();
     }
-        
+
 
     public void setVisible(boolean visible) {
         frame.setVisible(visible);

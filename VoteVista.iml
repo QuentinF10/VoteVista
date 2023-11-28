@@ -31,5 +31,6 @@
     <orderEntry type="library" name="opencv-java-x86_64-linux-2.3.0" level="project" />
     <orderEntry type="library" name="catalyst-java-sdk-0.0" level="project" />
     <orderEntry type="library" name="azure-annotations-1.10.0" level="project" />
+    <orderEntry type="library" name="mysql-connector-j-8.2.0" level="project" />
   </component>
 </module>

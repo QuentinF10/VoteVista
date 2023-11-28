@@ -1,4 +1,4 @@
-package VoteVista;
+
 import javax.swing.*;
 import javax.swing.text.html.HTMLEditorKit;
 import java.awt.*;

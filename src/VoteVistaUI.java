@@ -13,6 +13,8 @@ import java.awt.event.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import javax.imageio.ImageIO;
 import javax.swing.table.DefaultTableCellRenderer;
 
@@ -25,6 +27,7 @@ public class VoteVistaUI {
     private WebcamPanel webcamPanel;
     public boolean idScanned = false;
     public String firstName, lastName;
+    public CustomTableModel mainModel;
 
 
     public VoteVistaUI() {
@@ -97,10 +100,9 @@ public class VoteVistaUI {
         // Create the table panel where the screen and printer will be placed
         tablePanel = new TablePanel();
         frame.add(tablePanel);
-
         // Display the window.
         frame.setVisible(true);
-        tablePanel = new TablePanel();
+
 
 
     }
@@ -273,6 +275,58 @@ public class VoteVistaUI {
 
             }
         }
+        // Method to update the screen with vote summary
+        public void showVoteSummary(Map<String, String> selectedVotes) {
+            screen.removeAll(); // Clear the existing content
+            screen.setLayout(new BoxLayout(screen, BoxLayout.Y_AXIS)); // Set layout for the summary
+
+            // Create a title label for the summary
+            JLabel summaryTitle = new JLabel("Vote Summary");
+            summaryTitle.setAlignmentX(Component.CENTER_ALIGNMENT);
+            // Add a line break
+            screen.add(Box.createRigidArea(new Dimension(0, 20)));
+            summaryTitle.setFont(new Font("SansSerif", Font.BOLD, 18));
+            summaryTitle.setAlignmentX(Component.CENTER_ALIGNMENT);
+            screen.add(summaryTitle);
+
+            // Add labels for each selected vote
+            for (Map.Entry<String, String> entry : selectedVotes.entrySet()) {
+                String position = entry.getKey();
+                String candidate = entry.getValue();
+                JLabel label = new JLabel(position + ": " + candidate +"\n");
+                label.setAlignmentX(Component.CENTER_ALIGNMENT);
+                screen.add(label);
+            }
+            // Add a line break
+            screen.add(Box.createRigidArea(new Dimension(0, 20)));
+
+            // Change My Vote Button
+            JButton changeVoteButton = new JButton("Change My Vote");
+            changeVoteButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+            changeVoteButton.addActionListener(e -> displayVotingInterface());
+            screen.add(changeVoteButton);
+
+            // Print Button
+            JButton printButton = new JButton("Print");
+            printButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+            printButton.addActionListener(e -> printVoteSummary(selectedVotes));
+            screen.add(printButton);
+
+            screen.revalidate();
+            screen.repaint();
+        }
+
+        private void printVoteSummary(Map<String, String> selectedVotes) {
+            // Logic to print the vote summary
+            // This should be implemented as per your application's requirements
+         // String userInfo =  String.format("Name: %s %s<br/>", firstName, lastName);
+            //Receipt receipt = new Receipt(userInfo, selectedVotes.toString());
+
+          //  receipt.setVisible(true);
+
+        }
+
+
 
         private boolean isClickOnPaperStack(Point clickPoint) {
             // Define the area where the paper stack is
@@ -427,7 +481,7 @@ public class VoteVistaUI {
             Object[] columnNames = {"U.S Senator", "State Senator", "Representative", "Commissioner", "Sheriff", "Mayor", "District Judge"};
 
             // Initialize the custom table model
-            CustomTableModel mainModel = new CustomTableModel(5, 8);
+             mainModel = new CustomTableModel(5, 8);
 
             mainModel.setColumnIdentifiers(new Object[]{"","U.S Senator", "State Senator", "Representative", "Commissioner", "Sheriff", "Mayor", "District Judge"});
             // Populate the table with cand idate names (example names used here)
@@ -495,7 +549,9 @@ public class VoteVistaUI {
 
                         if (confirm == JOptionPane.YES_OPTION) {
                             // Logic to show recap of votes
-                            showVoteRecap();
+                            displayVoteSummaryAndProceed();
+                            // Add logic to print the vote summary
+
                         }
                     }
 
@@ -512,6 +568,30 @@ public class VoteVistaUI {
             screen.repaint();
         }
 
+        private void displayVoteSummaryAndProceed() {
+            Map<String, String> selectedVotes = getSelectedVotes();
+
+            tablePanel.showVoteSummary(selectedVotes);
+
+
+        }
+        private Map<String, String> getSelectedVotes() {
+            Map<String, String> selectedVotes = new HashMap<>();
+
+
+            for (int col = 1; col < mainModel.getColumnCount(); col++) {
+                for (int row = 0; row < mainModel.getRowCount(); row++) {
+                    if (mainModel.isSelected(row, col)) {
+                        String position = mainModel.getColumnName(col);
+                        String candidate = (String) mainModel.getValueAt(row, col);
+                        selectedVotes.put(position, candidate);
+                        break; // Assuming only one candidate can be selected per position
+                    }
+                }
+            }
+
+            return selectedVotes;
+        }
         private boolean isEachColumnSelected(JTable table) {
             CustomTableModel model = (CustomTableModel) table.getModel();
             for (int col = 1; col < table.getColumnCount(); col++) {
@@ -527,11 +607,6 @@ public class VoteVistaUI {
                 }
             }
             return true;
-        }
-
-        private void showVoteRecap() {
-            // Logic to display the recap of votes
-            // This method needs to be implemented
         }
 
 
