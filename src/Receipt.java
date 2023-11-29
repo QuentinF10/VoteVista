@@ -13,6 +13,10 @@ public class Receipt {
         this.voteInfo = voteInfo;
     }
 
+    /**
+     * Method to get the vote Infos in the HTML format
+     * @return
+     */
     public String getFormattedText() {
         StringBuilder formattedVoteInfo = new StringBuilder();
         // Split the voteInfo string into individual votes
