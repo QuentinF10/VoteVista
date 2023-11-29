@@ -110,11 +110,13 @@ public class QRScanner {
         } catch (JSONException e) {
             e.printStackTrace();
             // Handle the error appropriately
+            JOptionPane.showMessageDialog(voteVistaUI.frame, "Some informations are missing, please scan your National ID again.");
         }
     }
 
     void handleQRCodeVotingResult(Result result) throws JSONException {
 
+        try {
             String qrCodeText = result.getText();
             JSONObject jsonObject = new JSONObject(qrCodeText);
 
@@ -131,32 +133,38 @@ public class QRScanner {
                     firstNameVoting, lastNameVoting, votingNumber, expDateVoting, State
             );
 
-        SwingUtilities.invokeLater(() -> {
-            tablePanel.updateUIWithInfoAndImage(info, null);
-            // Prompt user to confirm the information
-            // This will be run if "No" is clicked
-            ConfirmationDialog dialog = new ConfirmationDialog(voteVistaUI.frame, "Confirm Information", "Are these info corrects?", tablePanel::promptForIDScan);
-            dialog.setLocation(570, 450); // Set your desired X and Y coordinates
-            int response = dialog.showDialog();
-            if (response == JOptionPane.YES_OPTION) {
-                // If the user confirms the information is correct
-                System.out.println("Voting Scan - First Name: " + voteVistaUI.firstName + ", Last Name: " + voteVistaUI.lastName);
+            SwingUtilities.invokeLater(() -> {
+                tablePanel.updateUIWithInfoAndImage(info, null);
+                // Prompt user to confirm the information
+                // This will be run if "No" is clicked
+                ConfirmationDialog dialog = new ConfirmationDialog(voteVistaUI.frame, "Confirm Information", "Are these info corrects?", tablePanel::promptForIDScan);
+                dialog.setLocation(570, 450); // Set your desired X and Y coordinates
+                int response = dialog.showDialog();
+                if (response == JOptionPane.YES_OPTION) {
+                    // If the user confirms the information is correct
+                    System.out.println("Voting Scan - First Name: " + voteVistaUI.firstName + ", Last Name: " + voteVistaUI.lastName);
 
-                if(firstNameVoting.equals(voteVistaUI.firstName) && lastNameVoting.equals(voteVistaUI.lastName)){
-                    voteVistaUI.idScanned = false;
-                    tablePanel.displayVotingInterface();
-                }else{
+                    if (firstNameVoting.equals(voteVistaUI.firstName) && lastNameVoting.equals(voteVistaUI.lastName)) {
+                        voteVistaUI.idScanned = false;
+                        tablePanel.displayVotingInterface();
+                    } else {
 
-                    tablePanel.promptForIDScan();
+                        tablePanel.promptForIDScan();
+                    }
+
+                } else {
+                    // If user says the info is incorrect, clear the info and ask to scan again
+                    tablePanel.updateUIWithInfoAndImage("", null);
                 }
+            });
 
-            }else {
-                // If user says the info is incorrect, clear the info and ask to scan again
-                tablePanel.updateUIWithInfoAndImage("", null);
-            }
-        });
-
+        } catch (JSONException e) {
+            e.printStackTrace();
+            // Handle the error appropriately
+            JOptionPane.showMessageDialog(voteVistaUI.frame, "Some informations are missing, please scan your Voter ID again.");
+        }
     }
+
     public static BufferedImage resizeImage(BufferedImage originalImage, int targetWidth, int targetHeight) throws IOException {
         BufferedImage resizedImage = new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_RGB);
         Graphics2D graphics2D = resizedImage.createGraphics();

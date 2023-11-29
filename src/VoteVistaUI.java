@@ -379,7 +379,7 @@ public class VoteVistaUI {
 
         }
 
-        private void resetVotingProcess() {
+        public void resetVotingProcess() {
             // Remove the old tablePanel
             frame.remove(tablePanel);
 
@@ -390,6 +390,7 @@ public class VoteVistaUI {
             frame.add(tablePanel);
             frame.revalidate();
             frame.repaint();
+            isReceipt = false;
         }
         private boolean isClickOnPaperStack(Point clickPoint) {
             // Define the area where the paper stack is
@@ -813,7 +814,7 @@ public class VoteVistaUI {
         // Call this method from the Swing event dispatch thread
         SwingUtilities.invokeLater(() -> {
             JOptionPane.showMessageDialog(frame, "Connection lost, restart voting process.");
-            // Any additional logic to handle the restart of the voting process
+            tablePanel.resetVotingProcess();
         });
     }
 
