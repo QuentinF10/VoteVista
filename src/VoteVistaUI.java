@@ -22,10 +22,10 @@ import javax.swing.table.DefaultTableCellRenderer;
 public class VoteVistaUI {
     public JFrame frame;
     private TablePanel tablePanel;
-    private Image printerImage, cameraImage, backgroundImage, oregonImage, adminImage;
+    private Image printerImage, cameraImage, backgroundImage, oregonImage, adminImage,handsImage;
     private Webcam webcam;
     private WebcamPanel webcamPanel;
-    public boolean idScanned = false;
+    public boolean idScanned = false, isReceipt = false;
     public String firstName, lastName;
     public CustomTableModel mainModel;
 
@@ -67,6 +67,17 @@ public class VoteVistaUI {
         } catch (IOException e) {
             e.printStackTrace();
             printerImage = null;
+        }
+
+        try {
+            Image originalhandsImage = ImageIO.read(new File("C:\\Users\\Quentin\\OneDrive - ESIEE Paris\\UNM\\CS460\\VoteVista\\src/mains.png")); // Replace with your image path
+            // Resize image to new width and height
+            int imageWidth = 500; // Desired width
+            int imageHeight = 600; // Desired height
+            handsImage = originalhandsImage.getScaledInstance(imageWidth, imageHeight, Image.SCALE_SMOOTH);
+        } catch (IOException e) {
+            e.printStackTrace();
+            handsImage = null;
         }
         // Load the oregon image
         try {
@@ -117,6 +128,7 @@ public class VoteVistaUI {
         private JLabel paperLabel;
         private boolean isDraggingPaper = false;
         private int paperCount = 20; // Number of papers in the stack
+        private Receipt currentReceipt = null;
 
 
 
@@ -254,7 +266,7 @@ public class VoteVistaUI {
                 // After the dialog is dismissed
                 startQRScanning();
             }else{
-                    if (!idScanned) {
+                    if (idScanned) {
                         // Create a JOptionPane
                         JOptionPane optionPane = new JOptionPane(
                                 "<html><center>Now, scan your Voter Identification Card</center></html>",
@@ -264,7 +276,7 @@ public class VoteVistaUI {
                         JDialog dialog = optionPane.createDialog("Instructions");
 
                         // Set location
-                        dialog.setLocation(100, 200); // Set your desired X and Y coordinates
+                        dialog.setLocation(screen.getX()+180, screen.getY()+100); // Set your desired X and Y coordinates
 
                         // Show the dialog
                         dialog.setVisible(true);
@@ -309,25 +321,76 @@ public class VoteVistaUI {
             // Print Button
             JButton printButton = new JButton("Print");
             printButton.setAlignmentX(Component.CENTER_ALIGNMENT);
-            printButton.addActionListener(e -> printVoteSummary(selectedVotes));
+            printButton.addActionListener(e -> showPrintingMessageAndPrintSummary(selectedVotes));
             screen.add(printButton);
+            screen.setBackground(Color.WHITE);
 
             screen.revalidate();
             screen.repaint();
         }
 
+        public void showPrintingMessageAndPrintSummary(Map<String, String> selectedVotes) {
+
+            screen.removeAll();
+            // Update the screen message
+            screenMessage.setText("<html><center>Thanks for voting. Your ballot is now printing...</center></html>");
+            screenMessage.setForeground(Color.BLACK);
+            screenMessage.setHorizontalAlignment(JLabel.CENTER);
+            screenMessage.setVerticalAlignment(JLabel.CENTER);
+
+            // Add the message to the screen panel
+            screen.add(screenMessage);
+            screen.setLayout(new BorderLayout());
+            screen.add(screenMessage, BorderLayout.CENTER);
+
+            screen.revalidate();
+            screen.repaint();
+
+            // Create a timer to wait for a few seconds before printing the summary
+            new javax.swing.Timer(5000, e -> {
+                printVoteSummary(selectedVotes);
+                ((javax.swing.Timer)e.getSource()).stop(); // Stop the timer after execution
+            }).start();
+        }
         private void printVoteSummary(Map<String, String> selectedVotes) {
             // Logic to print the vote summary
             // This should be implemented as per your application's requirements
-         // String userInfo =  String.format("Name: %s %s<br/>", firstName, lastName);
-            //Receipt receipt = new Receipt(userInfo, selectedVotes.toString());
+          String userInfo =  String.format("Name: %s %s<br/>", firstName, lastName);
+            currentReceipt = new Receipt(userInfo, selectedVotes.toString());
+                isReceipt = true;
+                isPrinterOn = false;
 
-          //  receipt.setVisible(true);
+             screen.setBounds(0, 0, 0, 0);
+            tablePanel.revalidate();
+            tablePanel.repaint();
+
+            // Use glass pane to capture mouse clicks
+            JPanel glassPane = (JPanel) frame.getGlassPane();
+            glassPane.setVisible(true);
+            glassPane.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    resetVotingProcess();
+                    glassPane.setVisible(false);
+                    glassPane.removeMouseListener(this);
+                }
+            });
+
 
         }
 
+        private void resetVotingProcess() {
+            // Remove the old tablePanel
+            frame.remove(tablePanel);
 
+            // Create a new instance of tablePanel
+            tablePanel = new TablePanel();
 
+            // Add the new tablePanel to the frame
+            frame.add(tablePanel);
+            frame.revalidate();
+            frame.repaint();
+        }
         private boolean isClickOnPaperStack(Point clickPoint) {
             // Define the area where the paper stack is
             Rectangle paperStackArea = new Rectangle(800, 620, 100, 150);
@@ -691,6 +754,8 @@ public class VoteVistaUI {
 
             drawPaperStack(g, 800, 620); // Adjust x and y to position the stack
 
+
+
             // Draw the camera image if it's loaded
             if (cameraImage != null) {
                 int cameraX = getWidth() / 2 - cameraImage.getWidth(null) / 2 + 13; // Centered above the screen
@@ -706,6 +771,27 @@ public class VoteVistaUI {
                     g.fillOval(lightX, lightY, lightDiameter, lightDiameter);
                 }
             }
+
+            if (isReceipt){
+                if (handsImage != null && currentReceipt != null) {
+                    Graphics2D g2d = (Graphics2D) g;
+                    // Draw the hands image
+                    int imageX = handsImage.getWidth(null) -150; // X coordinate
+                    int imageY = handsImage.getHeight(null)-425; // Y coordinate
+                    g2d.drawImage(handsImage, imageX, imageY, this);
+
+                    // Render HTML content on image
+                   JEditorPane editorPane = new JEditorPane();
+                    editorPane.setContentType("text/html");
+                    editorPane.setText(currentReceipt.getFormattedText());
+                    // You may need to position and size the editorPane appropriately
+                    editorPane.setSize(new Dimension(150, 1));
+                    editorPane.setBackground(new Color(0,0,0,0));
+                    g2d.translate(imageX+150, imageY+100);
+                    editorPane.paint(g2d);
+                }
+            }
+
         }
         private void drawPaperStack(Graphics g, int x, int y) {
             int paperWidth = 100;

@@ -86,6 +86,7 @@ public class QRScanner {
                                 voteVistaUI.firstName = firstName;
                                 voteVistaUI.lastName = lastName;
 
+                                tablePanel.displayStep();
                                 tablePanel.startQRScanning();
 
 
@@ -93,6 +94,7 @@ public class QRScanner {
                         });
                     } catch (IOException e) {
                         e.printStackTrace();
+
                         // Show error dialog if the image can't be loaded
                         SwingUtilities.invokeLater(() -> {
                             JOptionPane.showMessageDialog(null, "Can't load image.", "Error", JOptionPane.ERROR_MESSAGE);

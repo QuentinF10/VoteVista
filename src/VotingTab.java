@@ -90,7 +90,7 @@ public class VotingTab {
                     EventQueue.invokeLater(() -> {
                         frame.setVisible(false);
                         Receipt receipt = new Receipt(userInfo, voteInfo);
-                        receipt.setVisible(true);
+
                     });
 
                 } catch (SQLException ex) {
