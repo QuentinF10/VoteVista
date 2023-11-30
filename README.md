@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Webcam Capture API
 
 This library allows you to use your build-in or external webcam directly from Java. It's designed to abstract commonly used camera features and support various capturing farmeworks.
