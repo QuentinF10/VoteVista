@@ -52,14 +52,14 @@ public class VoteVistaUI {
 
         // Load the background image
         try {
-            backgroundImage = ImageIO.read(new File("C:\\Users\\Quentin\\OneDrive - ESIEE Paris\\UNM\\CS460\\VoteVista\\src/american.jpg")); // Replace with your background image path
+            backgroundImage = ImageIO.read(new File("american.jpg")); // Replace with your background image path
         } catch (IOException e) {
             e.printStackTrace();
             backgroundImage = null;
         }
         // Load and resize the printer image
         try {
-            Image originalImage = ImageIO.read(new File("C:\\Users\\Quentin\\OneDrive - ESIEE Paris\\UNM\\CS460\\VoteVista\\src/printer.png")); // Replace with your image path
+            Image originalImage = ImageIO.read(new File("printer.png")); // Replace with your image path
             // Resize image to new width and height
             int imageWidth = 150; // Desired width
             int imageHeight = 150; // Desired height
@@ -70,7 +70,7 @@ public class VoteVistaUI {
         }
 
         try {
-            Image originalhandsImage = ImageIO.read(new File("C:\\Users\\Quentin\\OneDrive - ESIEE Paris\\UNM\\CS460\\VoteVista\\src/mains.png")); // Replace with your image path
+            Image originalhandsImage = ImageIO.read(new File("mains.png")); // Replace with your image path
             // Resize image to new width and height
             int imageWidth = 500; // Desired width
             int imageHeight = 600; // Desired height
@@ -81,7 +81,7 @@ public class VoteVistaUI {
         }
         // Load the oregon image
         try {
-            oregonImage = ImageIO.read(new File("C:\\Users\\Quentin\\OneDrive - ESIEE Paris\\UNM\\CS460\\VoteVista\\src/oregon.png")); // Replace with your background image path
+            oregonImage = ImageIO.read(new File("oregon.png")); // Replace with your background image path
         } catch (IOException e) {
             e.printStackTrace();
             oregonImage = null;
@@ -89,7 +89,7 @@ public class VoteVistaUI {
 
         // Load and resize the camera image
         try {
-            Image originalCameraImage = ImageIO.read(new File("C:\\Users\\Quentin\\OneDrive - ESIEE Paris\\UNM\\CS460\\VoteVista\\src/camera.png")); // Replace with your camera image path
+            Image originalCameraImage = ImageIO.read(new File("camera.png")); // Replace with your camera image path
             int cameraImageWidth = 50; // Desired width
             int cameraImageHeight = 30; // Desired height
             cameraImage = originalCameraImage.getScaledInstance(cameraImageWidth, cameraImageHeight, Image.SCALE_SMOOTH);
@@ -100,7 +100,7 @@ public class VoteVistaUI {
 
 
           try {
-         Image originalAdminImage = ImageIO.read(new File("C:\\Users\\Quentin\\OneDrive - ESIEE Paris\\UNM\\CS460\\VoteVista\\src/admin.png")); // Replace with your image path
+         Image originalAdminImage = ImageIO.read(new File("admin.png")); // Replace with your image path
          int adminImageWidth = 30; // Desired width
          int adminImageHeight = 30; // Desired height
          adminImage = originalAdminImage.getScaledInstance(adminImageWidth, adminImageHeight, Image.SCALE_SMOOTH);
