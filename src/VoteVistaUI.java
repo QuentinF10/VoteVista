@@ -13,6 +13,12 @@ import java.awt.event.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.HashMap;
 import java.util.Map;
 import javax.imageio.ImageIO;
@@ -28,7 +34,9 @@ public class VoteVistaUI {
     public boolean idScanned = false, isReceipt = false;
     public String firstName, lastName;
     public CustomTableModel mainModel;
-
+    private static final String DB_URL = "jdbc:mysql://localhost:3306/votevista";
+    private static final String USER = "root";
+    private static final String PASS = "root";
 
     public VoteVistaUI() {
 
@@ -48,18 +56,19 @@ public class VoteVistaUI {
         frame = new JFrame("VoteVista");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(1200, 800);
+        frame.setLocationRelativeTo(null);
         frame.setResizable(false); // Prevent the window from being resized
 
         // Load the background image
         try {
-            backgroundImage = ImageIO.read(new File("C:\\Users\\Quentin\\OneDrive - ESIEE Paris\\UNM\\CS460\\VoteVista\\src/american.jpg")); // Replace with your background image path
+            backgroundImage = ImageIO.read(new File("american.jpg")); // Replace with your background image path
         } catch (IOException e) {
             e.printStackTrace();
             backgroundImage = null;
         }
         // Load and resize the printer image
         try {
-            Image originalImage = ImageIO.read(new File("C:\\Users\\Quentin\\OneDrive - ESIEE Paris\\UNM\\CS460\\VoteVista\\src/printer.png")); // Replace with your image path
+            Image originalImage = ImageIO.read(new File("printer.png")); // Replace with your image path
             // Resize image to new width and height
             int imageWidth = 150; // Desired width
             int imageHeight = 150; // Desired height
@@ -70,7 +79,7 @@ public class VoteVistaUI {
         }
 
         try {
-            Image originalhandsImage = ImageIO.read(new File("C:\\Users\\Quentin\\OneDrive - ESIEE Paris\\UNM\\CS460\\VoteVista\\src/mains.png")); // Replace with your image path
+            Image originalhandsImage = ImageIO.read(new File("mains.png")); // Replace with your image path
             // Resize image to new width and height
             int imageWidth = 500; // Desired width
             int imageHeight = 600; // Desired height
@@ -81,7 +90,7 @@ public class VoteVistaUI {
         }
         // Load the oregon image
         try {
-            oregonImage = ImageIO.read(new File("C:\\Users\\Quentin\\OneDrive - ESIEE Paris\\UNM\\CS460\\VoteVista\\src/oregon.png")); // Replace with your background image path
+            oregonImage = ImageIO.read(new File("oregon.png")); // Replace with your background image path
         } catch (IOException e) {
             e.printStackTrace();
             oregonImage = null;
@@ -89,7 +98,7 @@ public class VoteVistaUI {
 
         // Load and resize the camera image
         try {
-            Image originalCameraImage = ImageIO.read(new File("C:\\Users\\Quentin\\OneDrive - ESIEE Paris\\UNM\\CS460\\VoteVista\\src/camera.png")); // Replace with your camera image path
+            Image originalCameraImage = ImageIO.read(new File("camera.png")); // Replace with your camera image path
             int cameraImageWidth = 50; // Desired width
             int cameraImageHeight = 30; // Desired height
             cameraImage = originalCameraImage.getScaledInstance(cameraImageWidth, cameraImageHeight, Image.SCALE_SMOOTH);
@@ -99,23 +108,20 @@ public class VoteVistaUI {
         }
 
 
-          try {
-         Image originalAdminImage = ImageIO.read(new File("C:\\Users\\Quentin\\OneDrive - ESIEE Paris\\UNM\\CS460\\VoteVista\\src/admin.png")); // Replace with your image path
-         int adminImageWidth = 30; // Desired width
-         int adminImageHeight = 30; // Desired height
-         adminImage = originalAdminImage.getScaledInstance(adminImageWidth, adminImageHeight, Image.SCALE_SMOOTH);
-         } catch (IOException e) {
-         e.printStackTrace();
-         adminImage = null;
-         }
+        try {
+            Image originalAdminImage = ImageIO.read(new File("admin.png")); // Replace with your image path
+            int adminImageWidth = 30; // Desired width
+            int adminImageHeight = 30; // Desired height
+            adminImage = originalAdminImage.getScaledInstance(adminImageWidth, adminImageHeight, Image.SCALE_SMOOTH);
+        } catch (IOException e) {
+            e.printStackTrace();
+            adminImage = null;
+        }
         // Create the table panel where the screen and printer will be placed
         tablePanel = new TablePanel();
         frame.add(tablePanel);
         // Display the window.
         frame.setVisible(true);
-
-
-
     }
 
 
@@ -541,11 +547,8 @@ public class VoteVistaUI {
             // webcam.close(); // Uncomment if webcam is being used
             screen.removeAll();
 
-            // Column names
-            Object[] columnNames = {"U.S Senator", "State Senator", "Representative", "Commissioner", "Sheriff", "Mayor", "District Judge"};
-
             // Initialize the custom table model
-             mainModel = new CustomTableModel(5, 8);
+            mainModel = new CustomTableModel(5, 8);
 
             mainModel.setColumnIdentifiers(new Object[]{"","U.S Senator", "State Senator", "Representative", "Commissioner", "Sheriff", "Mayor", "District Judge"});
             // Populate the table with cand idate names (example names used here)
@@ -634,14 +637,13 @@ public class VoteVistaUI {
 
         private void displayVoteSummaryAndProceed() {
             Map<String, String> selectedVotes = getSelectedVotes();
-
+            insertVotesIntoDatabase(selectedVotes, "16");
+            System.out.println("DOOOOOOOOOOOOOOOOOOOOOOOONNNNNNNNNNNNNNNNNNNNNNEEEEEEEEEEEEEEEEEEE");
             tablePanel.showVoteSummary(selectedVotes);
-
-
         }
+
         private Map<String, String> getSelectedVotes() {
             Map<String, String> selectedVotes = new HashMap<>();
-
 
             for (int col = 1; col < mainModel.getColumnCount(); col++) {
                 for (int row = 0; row < mainModel.getRowCount(); row++) {
@@ -653,9 +655,89 @@ public class VoteVistaUI {
                     }
                 }
             }
-
             return selectedVotes;
         }
+
+        public void insertVotesIntoDatabase(Map<String, String> selectedVotes, String voterId) {
+            // Assuming you have a `Connection` object named `conn`
+            String insertSql = "INSERT INTO votes (VoterID, CandidateID, PositionID, Timestamp) VALUES (?, ?, ?, ?)";
+
+            try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
+                PreparedStatement pstmt = conn.prepareStatement(insertSql)) {
+
+                // You would need to get the current timestamp to insert
+                Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+
+                for (Map.Entry<String, String> vote : selectedVotes.entrySet()) {
+                    String positionName = vote.getKey();
+                    String candidateName = vote.getValue();
+
+                    // Assuming you have methods `getPositionIDByName` and `getCandidateIDByName` to get IDs
+                    int positionID = getPositionIDByName(positionName);
+                    int candidateID = getCandidateIDByName(candidateName);
+
+                    pstmt.setString(1, voterId);
+                    pstmt.setInt(2, candidateID);
+                    pstmt.setInt(3, positionID);
+                    pstmt.setTimestamp(4, timestamp);
+
+                    pstmt.executeUpdate();
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+                // Handle exceptions, maybe show a dialog to the user that something went wrong
+            }
+        }
+
+        public int getPositionIDByName(String positionName) {
+            String query = "SELECT PositionID FROM positions WHERE PositionName = ?";
+            int positionID = -1;
+
+            try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
+                PreparedStatement pstmt = conn.prepareStatement(query)) {
+                
+                pstmt.setString(1, positionName);
+                try (ResultSet rs = pstmt.executeQuery()) {
+                    if (rs.next()) {
+                        positionID = rs.getInt("PositionID");
+                    }
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+                // Handle exceptions, maybe show a dialog to the user that something went wrong
+            }
+
+            return positionID;
+        }
+
+        public int getCandidateIDByName(String candidateName) {
+            // Assuming candidateName is a full name in "First Last" format
+            String[] parts = candidateName.split(" ");
+            String firstName = parts[0];
+            String lastName = parts[1];
+            
+            String query = "SELECT CandidateID FROM candidates WHERE FirstName = ? AND LastName = ?";
+            int candidateID = -1;
+
+            try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
+                PreparedStatement pstmt = conn.prepareStatement(query)) {
+                
+                pstmt.setString(1, firstName);
+                pstmt.setString(2, lastName);
+                try (ResultSet rs = pstmt.executeQuery()) {
+                    if (rs.next()) {
+                        candidateID = rs.getInt("CandidateID");
+                    }
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+                // Handle exceptions, maybe show a dialog to the user that something went wrong
+            }
+
+            return candidateID;
+        }
+
+
         private boolean isEachColumnSelected(JTable table) {
             CustomTableModel model = (CustomTableModel) table.getModel();
             for (int col = 1; col < table.getColumnCount(); col++) {

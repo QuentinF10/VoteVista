@@ -38,6 +38,8 @@ public class AdminDialog extends JDialog {
         if (id.equals(name) && password.equals(pwd)) {
             // Successful login
             dispose();
+            AdminWindow adminWindow = new AdminWindow(null);
+            adminWindow.setVisible(true);
         } else {
             // Failed login
             JOptionPane.showMessageDialog(this, "Invalid ID or Password", "Login Failed", JOptionPane.ERROR_MESSAGE);
