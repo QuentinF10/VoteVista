@@ -29,9 +29,6 @@ public class QRScanner {
         webcam = Webcam.getDefault();
         qrCodeReader = new MultiFormatReader();
         this.voteVistaUI = voteVistaUI; // Assign the passed VoteVistaUI instance to the field
-
-
-
     }
 
     void handleQRCodeIDResult(Result result) {
@@ -40,13 +37,13 @@ public class QRScanner {
             JSONObject jsonObject = new JSONObject(qrCodeText);
 
             // Extract data from JSON
-             firstName = jsonObject.optString("firstName", "N/A");
-             lastName = jsonObject.optString("lastName", "N/A");
-             dateOfBirth = jsonObject.optString("dateOfBirth", "N/A");
-             address = jsonObject.optString("Address");
-             sex = jsonObject.getString("Sex");
-             expDate = jsonObject.getString("Exp");
-             imageUrl = jsonObject.optString("imagePath", "");
+            firstName = jsonObject.optString("firstName", "N/A");
+            lastName = jsonObject.optString("lastName", "N/A");
+            dateOfBirth = jsonObject.optString("dateOfBirth", "N/A");
+            address = jsonObject.optString("Address");
+            sex = jsonObject.getString("Sex");
+            expDate = jsonObject.getString("Exp");
+            imageUrl = jsonObject.optString("imagePath", "");
 
             // Format the information for display
             final String info = String.format(
@@ -74,17 +71,18 @@ public class QRScanner {
                         SwingUtilities.invokeLater(() -> {
                             tablePanel.updateUIWithInfoAndImage(info, finalUrlImage);
                             // Prompt user to confirm the information
-                            ConfirmationDialog dialog = new ConfirmationDialog(voteVistaUI.frame, "Confirm Information", "Are these info corrects?", () -> {
+                            ConfirmationDialog dialog = new ConfirmationDialog(voteVistaUI.frame, "Confirmation", "Are these info corrects?", () -> {
                                 tablePanel.promptForIDScan(); // This will be run if "No" is clicked
                             });
                             // Set location
-                            dialog.setLocation(800, 400); // Set your desired X and Y coordinates
+                            dialog.setLocation(780,400);
                             int response = dialog.showDialog();
                             if (response == JOptionPane.YES_OPTION) {
                                 // If the user confirms the information is correct
                                 voteVistaUI.idScanned = true;
                                 voteVistaUI.firstName = firstName;
                                 voteVistaUI.lastName = lastName;
+                                voteVistaUI.DateOfBirth = dateOfBirth;
 
                                 tablePanel.displayStep();
                                 tablePanel.startQRScanning();
@@ -106,11 +104,13 @@ public class QRScanner {
             } else {
                 // Update UI without the image
                 JOptionPane.showMessageDialog(voteVistaUI.frame, "Some informations are missing, please scan your ID again.");
+
             }
         } catch (JSONException e) {
             e.printStackTrace();
             // Handle the error appropriately
             JOptionPane.showMessageDialog(voteVistaUI.frame, "Some informations are missing, please scan your National ID again.");
+
         }
     }
 
@@ -137,8 +137,8 @@ public class QRScanner {
                 tablePanel.updateUIWithInfoAndImage(info, null);
                 // Prompt user to confirm the information
                 // This will be run if "No" is clicked
-                ConfirmationDialog dialog = new ConfirmationDialog(voteVistaUI.frame, "Confirm Information", "Are these info corrects?", tablePanel::promptForIDScan);
-                dialog.setLocation(570, 450); // Set your desired X and Y coordinates
+                ConfirmationDialog dialog = new ConfirmationDialog(voteVistaUI.frame, "Confirmation", "Are these info corrects?", tablePanel::promptForIDScan);
+                dialog.setLocation(550,450);
                 int response = dialog.showDialog();
                 if (response == JOptionPane.YES_OPTION) {
                     // If the user confirms the information is correct

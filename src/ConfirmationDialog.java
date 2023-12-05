@@ -36,12 +36,15 @@ class ConfirmationDialog extends JDialog {
         this.add(buttonPanel, BorderLayout.SOUTH);
 
         // Set dialog size and location
-        this.setSize(150, 100); // Set your desired size
+        this.setSize(180, 100); // Set your desired size
         this.setLocationRelativeTo(owner); // Center it over the owner (can be null for screen center)
     }
 
     public int showDialog() {
         this.setVisible(true);
         return result; // Return the result of the dialog
+    }
+
+    public void setLocationRelativeTo(int i, int i1) {
     }
 }
