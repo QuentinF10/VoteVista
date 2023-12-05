@@ -19,6 +19,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import javax.imageio.ImageIO;
@@ -32,7 +35,7 @@ public class VoteVistaUI {
     private Webcam webcam;
     private WebcamPanel webcamPanel;
     public boolean idScanned = false, isReceipt = false;
-    public String firstName, lastName;
+    public String firstName, lastName, DateOfBirth;
     public CustomTableModel mainModel;
     private static final String DB_URL = "jdbc:mysql://localhost:3306/votevista";
     private static final String USER = "root";
@@ -241,19 +244,41 @@ public class VoteVistaUI {
                     if(isPrinterOn) {
                         displayStep();
                     }
-
                 }
             });
 
             // Add the screen to the TablePanel
             this.setLayout(null); // Use absolute positioning
             this.add(screen);
-
-
         }
 
+        public boolean hasVoted(String firstName, String lastName) {
+            boolean exists = false;
+            String query = "SELECT COUNT(*) FROM voters WHERE FirstName = ? AND LastName = ?";
+        
+            try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
+                 PreparedStatement pstmt = conn.prepareStatement(query)) {
+                
+                pstmt.setString(1, firstName);
+                pstmt.setString(2, lastName);
+                try (ResultSet rs = pstmt.executeQuery()) {
+                    if (rs.next()) {
+                        // If count is greater than 0, then the voter exists in the table
+                        exists = rs.getInt(1) > 0;
+                    }
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+                // Handle exceptions appropriately
+            }
+        
+            return exists;
+        }
+        
+
         public void displayStep() {
-            if (!idScanned) {
+            boolean voterExists = hasVoted(firstName, lastName);
+            if(!idScanned) {
                 // Create a JOptionPane
                 JOptionPane optionPane = new JOptionPane(
                         "<html><center>First, scan your National Identification Card</center></html>",
@@ -265,34 +290,41 @@ public class VoteVistaUI {
 
                 // Set location
                 dialog.setLocation(screen.getX()+180, screen.getY()+100); // Set your desired X and Y coordinates
+                dialog.setLocationRelativeTo(null);
 
                 // Show the dialog
                 dialog.setVisible(true);
 
                 // After the dialog is dismissed
                 startQRScanning();
-            }else{
-                    if (idScanned) {
-                        // Create a JOptionPane
-                        JOptionPane optionPane = new JOptionPane(
-                                "<html><center>Now, scan your Voter Identification Card</center></html>",
-                                JOptionPane.INFORMATION_MESSAGE);
+            }
+            else{
+                if (idScanned && !voterExists) {
+                    // Create a JOptionPane
+                    JOptionPane optionPane = new JOptionPane(
+                            "<html><center>Now, scan your Voter Identification Card</center></html>",
+                            JOptionPane.INFORMATION_MESSAGE);
 
-                        // Create a JDialog from JOptionPane
-                        JDialog dialog = optionPane.createDialog("Instructions");
+                    // Create a JDialog from JOptionPane
+                    JDialog dialog = optionPane.createDialog("Instructions");
 
-                        // Set location
-                        dialog.setLocation(screen.getX()+180, screen.getY()+100); // Set your desired X and Y coordinates
+                    // Set location
+                    dialog.setLocation(screen.getX()+180, screen.getY()+100); // Set your desired X and Y coordinates
 
-                        // Show the dialog
-                        dialog.setVisible(true);
+                    dialog.setLocationRelativeTo(null);
+                    // Show the dialog
+                    dialog.setVisible(true);
 
-                        // After the dialog is dismissed
-                        startQRScanning();
-                    }
-
+                    // After the dialog is dismissed
+                    startQRScanning();
+                }
+                else{
+                    JOptionPane.showMessageDialog(null, "You have already voted.", "Voting Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
             }
         }
+
         // Method to update the screen with vote summary
         public void showVoteSummary(Map<String, String> selectedVotes) {
             screen.removeAll(); // Clear the existing content
@@ -335,9 +367,90 @@ public class VoteVistaUI {
             screen.repaint();
         }
 
-        public void showPrintingMessageAndPrintSummary(Map<String, String> selectedVotes) {
+        public int getVoterID(String firstName, String lastName) {
+            int voterID = -1;
+            String selectSql = "SELECT VoterID FROM voters WHERE FirstName = ? AND LastName = ?";
+            try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
+                PreparedStatement pstmt = conn.prepareStatement(selectSql)) {
+                pstmt.setString(1, firstName);
+                pstmt.setString(2, lastName);
+                ResultSet rs = pstmt.executeQuery();
+                if (rs.next()) {
+                    voterID = rs.getInt("VoterID");
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+            return voterID;
+        }      
+        
+        public void insertVotes(Map<String, String> selectedVotes, int voterID) {
+            String insertSql = "INSERT INTO votes (VoterID, CandidateID, PositionID, Timestamp) VALUES (?, ?, ?, CURRENT_TIMESTAMP)";
+            
+            try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
+                 PreparedStatement pstmt = conn.prepareStatement(insertSql)) {
+                
+                System.out.println("Inserting votes for VoterID: " + voterID);
+        
+                for (Map.Entry<String, String> vote : selectedVotes.entrySet()) {
+                    String position = vote.getKey();
+                    String candidateName = vote.getValue();
+                    
+                    int candidateID = getCandidateIDByName(candidateName);
+                    int positionID = getPositionIDByName(position);
+        
+                    System.out.println("Position: " + position + " (" + positionID + ")");
+                    System.out.println("Candidate: " + candidateName + " (" + candidateID + ")");
+        
+                    // Only proceed if the candidateID is valid (greater than 0)
+                    if (candidateID > 0) {
+                        pstmt.setInt(1, voterID);
+                        pstmt.setInt(2, candidateID);
+                        pstmt.setInt(3, positionID);
+        
+                        // Print the prepared statement to check the final SQL query
+                        System.out.println("Executing SQL: " + pstmt.toString());
+                        
+                        int affectedRows = pstmt.executeUpdate();
+                        System.out.println("Rows affected: " + affectedRows);
+                    } else {
+                        // Handle the case where the candidate ID was not found
+                        System.out.println("Error: Candidate not found - " + candidateName);
+                    }
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+                System.out.println("SQLException: " + e.getMessage());
+            }
+        }
+        
+              
 
+        public void insertVoterDetails(String firstName, String lastName, String dateOfBirth) {
+            // SQL query to insert a new voter
+            String insertSql = "INSERT INTO voters (FirstName, LastName, DateOfBirth) VALUES (?, ?, ?)";
+            try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
+                PreparedStatement pstmt = conn.prepareStatement(insertSql)) {
+                SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy");
+                java.util.Date dob = dateFormat.parse(dateOfBirth);
+                pstmt.setString(1, firstName);
+                pstmt.setString(2, lastName);
+                pstmt.setDate(3, new java.sql.Date(dob.getTime()));
+                pstmt.executeUpdate();
+                System.out.println("Voter details inserted successfully.");
+            } catch (SQLException e) {
+                e.printStackTrace();
+            } catch (ParseException e) {
+                e.printStackTrace();
+            }
+        }        
+
+        public void showPrintingMessageAndPrintSummary(Map<String, String> selectedVotes) {
+            insertVoterDetails(firstName, lastName, DateOfBirth);
+            int voterID = getVoterID(firstName, lastName);
+            insertVotes(tablePanel.getSelectedVotes(), voterID);
             screen.removeAll();
+
             // Update the screen message
             screenMessage.setText("<html><center>Thanks for voting. Your ballot is now printing...</center></html>");
             screenMessage.setForeground(Color.BLACK);
@@ -358,15 +471,15 @@ public class VoteVistaUI {
                 ((javax.swing.Timer)e.getSource()).stop(); // Stop the timer after execution
             }).start();
         }
+
         private void printVoteSummary(Map<String, String> selectedVotes) {
             // Logic to print the vote summary
             // This should be implemented as per your application's requirements
-          String userInfo =  String.format("Name: %s %s<br/>", firstName, lastName);
+            String userInfo =  String.format("Name: %s %s<br/>", firstName, lastName,"Date of Birth: %t", DateOfBirth);
             currentReceipt = new Receipt(userInfo, selectedVotes.toString());
-                isReceipt = true;
-                isPrinterOn = false;
-
-             screen.setBounds(0, 0, 0, 0);
+            isReceipt = true;
+            isPrinterOn = false;
+            screen.setBounds(0, 0, 0, 0);
             tablePanel.revalidate();
             tablePanel.repaint();
 
@@ -381,8 +494,6 @@ public class VoteVistaUI {
                     glassPane.removeMouseListener(this);
                 }
             });
-
-
         }
 
         public void resetVotingProcess() {
@@ -550,15 +661,21 @@ public class VoteVistaUI {
             // Initialize the custom table model
             mainModel = new CustomTableModel(5, 8);
 
-            mainModel.setColumnIdentifiers(new Object[]{"","U.S Senator", "State Senator", "Representative", "Commissioner", "Sheriff", "Mayor", "District Judge"});
+            mainModel.setColumnIdentifiers(new Object[]{"","U.S. Senator", "State Senator", "State Representative", "Commissioner", "Sheriff", "Mayor", "District Judge"});
             // Populate the table with cand idate names (example names used here)
             //Names of candidates
-            Object candidates[]={"Lillie Matthews","Ben Reed","Angelo Parker","Daniel Anders","John Jordan","Rhonda Barker","Louis McCoy",
-                    "Douglas Key","Lillie Matthews","Lillie Matthews","Lillie Matthews","Lillie Matthews","Lillie Matthews","Lillie Matthews",
-                    "Kyle Burch","Lillie Matthews","Lillie Matthews", "Lillie Matthews","Lillie Matthews","Lillie Matthews","Lillie Matthews",
-                    "David Tapia","Lillie Matthews","Lillie Matthews", "Lillie Matthews","Lillie Matthews","Lillie Matthews","Lillie Matthews",
-                    "Terri Carter","Art Thomas","Bell Francine", "Theo Smith","Scott Marion","Antoine Scott","Natalie Ray",};
-
+            Object[] candidates = {
+                // Democratic
+                "Lillie Matthews", "Ben Reed", "DeAngelo Parker", "Danielle Anders", "John Jordan", "Rhonda Barker", "Louis McCoy",
+                // Republican
+                "Douglas Key", "Mari Ortiz", "Steven Henderson", "Karen Morrison", "Justin Hanks", "Yvonne Owens", "Patricia Francis",
+                // Conservative
+                "Kyle Burch", "Corey Klein", "Angie Franklin", "Penny Carver", "Bill Borchart", "Jeremy Goodman", "Samuel Welch",
+                // Working Families
+                "David Tapia", "Carl Patterson", "Kathy Korver", "Evan Elliot", "Tanner Harford", "Simon Crane", "Leslie Sanchez",
+                // Independence
+                "Terri Carter", "Bell Francine", "Theodore Smith", "Arturo Cervantes", "Scott Marion", "Antoine Scott", "Jerry Baker"
+            };
 
             int candidateIndex = 0;
 
@@ -579,7 +696,7 @@ public class VoteVistaUI {
 
             // Create and set up the main table
             JTable mainTable = new JTable(mainModel);
-            mainTable.setRowHeight(screen.getHeight() / 5); // Adjust row height
+            mainTable.setRowHeight(screen.getHeight() / 6); // Adjust row height
 
             // Custom cell renderer
             mainTable.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
@@ -637,8 +754,6 @@ public class VoteVistaUI {
 
         private void displayVoteSummaryAndProceed() {
             Map<String, String> selectedVotes = getSelectedVotes();
-            insertVotesIntoDatabase(selectedVotes, "16");
-            System.out.println("DOOOOOOOOOOOOOOOOOOOOOOOONNNNNNNNNNNNNNNNNNNNNNEEEEEEEEEEEEEEEEEEE");
             tablePanel.showVoteSummary(selectedVotes);
         }
 

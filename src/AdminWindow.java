@@ -174,7 +174,7 @@ public class AdminWindow extends JDialog {
 
         // If there are no candidate details, display a message
         if (candidateDetails.isEmpty()) {
-            JLabel noCandidatesLabel = new JLabel("There are no candidates for this position.");
+            JLabel noCandidatesLabel = new JLabel("There are no votes for this position.");
             noCandidatesLabel.setHorizontalAlignment(JLabel.CENTER);
             candidatesDialog.add(noCandidatesLabel, BorderLayout.CENTER);
         } else {
