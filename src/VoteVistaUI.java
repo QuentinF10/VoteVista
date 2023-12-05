@@ -473,12 +473,23 @@ public class VoteVistaUI {
         }
 
         private void printVoteSummary(Map<String, String> selectedVotes) {
-            // Logic to print the vote summary
-            // This should be implemented as per your application's requirements
-            String userInfo =  String.format("Name: %s %s<br/>", firstName, lastName,"Date of Birth: %t", DateOfBirth);
+            String formattedDateOfBirth = "";
+            try {
+                // Parse the DateOfBirth String into a Date object using the correct format
+                Date dob = new SimpleDateFormat("MM/dd/yyyy").parse(DateOfBirth);
+                // Format the Date object into a String for display in the format "dd/MM/yyyy"
+                formattedDateOfBirth = new SimpleDateFormat("dd/MM/yyyy").format(dob);
+            } catch (ParseException e) {
+                System.out.println("Failed to parse DateOfBirth: " + DateOfBirth);
+                e.printStackTrace();
+                formattedDateOfBirth = "Invalid Date";
+            }
+            
+            String userInfo = String.format("<b>Name:</b> %s %s<br/><b>Date of Birth:</b> %s", firstName, lastName, formattedDateOfBirth);
             currentReceipt = new Receipt(userInfo, selectedVotes.toString());
             isReceipt = true;
             isPrinterOn = false;
+
             screen.setBounds(0, 0, 0, 0);
             tablePanel.revalidate();
             tablePanel.repaint();
