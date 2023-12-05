@@ -18,7 +18,7 @@ public class AdminWindow extends JDialog {
 
     public AdminWindow(Frame parentFrame) {
         super(parentFrame, "Administration", true);
-        setSize(500, 300);
+        setSize(500, 250);
         setLayout(new BorderLayout(10, 10)); // Spacing between components
 
         // Initialize the components
@@ -37,7 +37,7 @@ public class AdminWindow extends JDialog {
         int voterCount = getVoterCount();
         JLabel votersLabel = createHeaderLabel("There are " + voterCount + " voters in total", 18, Font.BOLD);
         votersLabel.setAlignmentX(Component.CENTER_ALIGNMENT); 
-        votersLabel.setBorder(BorderFactory.createEmptyBorder(40, 0, 0, 0));
+        votersLabel.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
 
         verticalPanel.add(timeLabel);
         verticalPanel.add(votersLabel);
@@ -75,7 +75,7 @@ public class AdminWindow extends JDialog {
         add(verticalPanel, BorderLayout.CENTER);
         add(panel, BorderLayout.SOUTH);
 
-        setLocationRelativeTo(parentFrame);
+        setLocation(730, 430);
     }
 
     private String getCurrentTime() {
